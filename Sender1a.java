@@ -6,6 +6,7 @@
     Also file read template "https://stackoverflow.com/questions/858980/file-to-byte-in-java"
     IntToByteArray : https://stackoverflow.com/questions/2183240/java-integer-to-byte-array
     https://stackoverflow.com/questions/5683486/how-to-combine-two-byte-arrays
+    https://stackoverflow.com/questions/7619058/convert-a-byte-array-to-integer-in-java-and-vice-versa
     Everything else is my personal work.
 */
 import java.net.DatagramSocket;
@@ -16,20 +17,26 @@ import java.io.*;
 import java.util.*;
 import java.nio.ByteBuffer;
 
-public class Sender1a extends Thread{
+public class Sender1a extends Thread {
+    public static final int DATA_SIZE = 1024;
+    public static final int HEADER_SIZE = 5;
 
+    /* connection vars */
+    private DatagramSocket socket;
     private InetAddress address;
-    private String host;
+    // private String host;
     private int port;
 
+    /* data vars */
     private byte[] dataByte;
-    private DatagramSocket socket;
-
+    int seqNum;
+    byte eofFlag;
+    byte num[];
+    /* File vars */
     File file;
     FileInputStream fin = null;
-    byte fileContent[];
 
-    private void setup(String[] args){
+    private void setup(String[] args) {
         /* args: <RemoteHost> <Port> <Filename> */
 
         // Try to create file
@@ -47,92 +54,95 @@ public class Sender1a extends Thread{
             System.exit(0);
         }
         // Try to get host
-        host = args[0];
+        // host = args[0];
+        try {
+            address = InetAddress.getByName(args[0]);
+        } catch (UnknownHostException e) {
+            System.out.println("UNKNOWN HOST EXCEPTION");
+            System.exit(0);
+        }
 
         // initialise other components
         try {
             socket = new DatagramSocket();
         } catch (SocketException e) {
             System.out.println("SOCKET EXCEPTION");
-        }
+            System.exit(0);
 
-        try {
-            address = InetAddress.getByName(host);
-        } catch (UnknownHostException e) {
-            System.out.println("UNKNOWN HOST EXCEPTION");
         }
-
-        dataByte = new byte[1024];
 
         // Init file
         try {
             fin = new FileInputStream(file);
         } catch (FileNotFoundException e) {
             System.out.println("FILENOTFOUNDEXCEPTION");
-            //throw e;
+            System.exit(0);
+
+            // throw e;
         } catch (IOException e) {
             System.out.println("IOEXCEPTION");
-            //throw e;
+            System.exit(0);
+
+            // throw e;
         }
+
+        dataByte = new byte[DATA_SIZE];
+        seqNum = 0;
     }
 
     public void run() {
-        int seqNum = 0;
-        while (extractDataChunk()) {
-            byte num[] = intToByteArray(seqNum);
-            byte eofFlag = (byte) 0;
 
-
-            ByteBuffer bb = ByteBuffer.allocate(num.length + 1 + dataByte.length);
-            bb.put (num);
-            bb.put (eofFlag);
-            bb.put (dataByte);
-            // Combine packet
-            // List<Byte> packet = new ArrayList<Byte>(Arrays.<Byte>asList(num));
-            // packet.addAll(Arrays.<Byte>asList(eofFlag));
-            // packet.addAll(Arrays.<Byte>asList(dataByte));
-            // byte[] combined = packet.toArray(new byte[packet.size()]);
-            byte[] combined = bb.array();
+        while (1) {
+            System.out.println("Creating packet: " + seqNum);
             // create packet
-            DatagramPacket udpPacket = new DatagramPacket(combined, combined.length, address, port);
+            DatagramPacket packet = createPacket();
+
+            // send packet
+            System.out.println("Sending packet: " + seqNum);
 
             try {
-                socket.send(udpPacket);
-            } catch (IOException e){
+                socket.send(packet);
+            } catch (IOException e) {
                 System.out.println("ERROR IN SOCKET SENDING");
             }
-            System.out.println("Sending packet: " + seqNum);
+
             seqNum++;
+
+            // Sleep
+            System.out.println("Sleeping: ");
             try {
-                Thread.sleep (10);
-            } catch (InterruptedException e){
+                Thread.sleep(10);
+            } catch (InterruptedException e) {
 
             }
 
-        }
-        byte num[] = intToByteArray(seqNum);
-        byte eofFlag = (byte) 1;
-
-
-        ByteBuffer bb = ByteBuffer.allocate(num.length + 1 + dataByte.length);
-        bb.put (num);
-        bb.put (eofFlag);
-        bb.put (dataByte);
-        // Combine packet
-        // List<Byte> packet = new ArrayList<Byte>(Arrays.<Byte>asList(num));
-        // packet.addAll(Arrays.<Byte>asList(eofFlag));
-        // packet.addAll(Arrays.<Byte>asList(dataByte));
-        // byte[] combined = packet.toArray(new byte[packet.size()]);
-        byte[] combined = bb.array();
-        // create packet
-        DatagramPacket udpPacket = new DatagramPacket(combined, combined.length, address, port);
-        try {
-            socket.send(udpPacket);
-        } catch (IOException e){
-            System.out.println("ERROR IN SOCKET SENDING");
+            // Check for finish
+            if (((int) eofFlag & 0xFF) != 0)
+                break;
         }
     }
 
+    public void analysis() {
+    }
+
+    public void close() {
+        try {
+            sender.fin.close();
+        } catch (IOException e) {
+            System.out.println("ERROR IN FILE CLOSING");
+
+        }
+    }
+
+    public static void main(String[] args) {
+        Sender1a sender = new Sender1a();
+        sender.setup(args);
+        sender.run();
+        sender.analysis();
+        sender.close();
+    }
+
+    // UTILITIES:
     public static final byte[] intToByteArray(int value) {
         return new byte[] {
                 // (byte)(value >>> 24),
@@ -147,62 +157,28 @@ public class Sender1a extends Thread{
                 return false;
             }
 
-        } catch (IOException e){
-            return false;
+        } catch (IOException e) {
+            System.out.println("IOException at extractDataChunk()");
+            System.exit(0);
+            // return false;
         }
 
         return true;
     }
 
-    public static void main(String[] args) {
-        Sender1a sender = new Sender1a();
-        sender.setup(args);
-        // sender.extractData();
-        sender.run();
-        try {
-            sender.fin.close();
-        } catch (IOException e){
-            System.out.println("ERROR IN FILE CLOSING");
+    public DatagramPacket createPacket() {
+        num = intToByteArray(seqNum);
+        eofFlag = (byte) extractDataChunk();
 
-        }
+        ByteBuffer bb = ByteBuffer.allocate(HEADER_SIZE + DATA_SIZE);
+        bb.put((byte) 0); /// Offset
+        bb.put((byte) 0); /// Octet
+        bb.put(num); /// Sequence Number
+        bb.put(eofFlag); /// EoF
+        bb.put(dataByte); /// Data
+        byte[] combined = bb.array();
+
+        // create packet
+        return new DatagramPacket(combined, combined.length, address, port);
     }
-
-    /////////////////////////////////////////////////////////////////////////////////
-    /*public void extractData() throws FileNotFoundException, IOException {
-        byte[] input_data = null;
-        FileInputStream input_stream = null;
-        ByteArrayOutputStream output_stream = null;
-        byte[] bytes = null;
-        try {
-            input_stream = new FileInputStream(file);
-            output_stream = new ByteArrayOutputStream();
-            copyStream(input_stream, output_stream);
-            bytes = output_stream.toByteArray();
-        } catch (FileNotFoundException e) {
-            throw e;
-        } catch (IOException e) {
-            throw e;
-        } finally {
-            if (input_stream != null) {
-                input_stream.close();
-                input_stream = null;
-            }
-            if (output_stream != null) {
-                output_stream.close();
-                output_stream = null;
-            }
-        }
-
-    } */
-/*
-    public String sendEcho(String msg) {
-        buf = msg.getBytes();
-        DatagramPacket packet = new DatagramPacket(buf, buf.length, address, 4445);
-        socket.send(packet);
-        packet = new DatagramPacket(buf, buf.length);
-        socket.receive(packet);
-        String received = new String(packet.getData(), 0, packet.getLength());
-        return received;
-    }
-*/
 }
