@@ -11,9 +11,12 @@
 import java.net.DatagramSocket;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
+import java.net.*;
 import java.io.*;
+import java.util.*;
+import java.nio.ByteBuffer;
 
-public class Sender1a {
+public class Sender1a extends Thread{
 
     private InetAddress address;
     private String host;
@@ -26,7 +29,7 @@ public class Sender1a {
     FileInputStream fin = null;
     byte fileContent[];
 
-    private void setup(String[] args) throws FileNotFoundException, Exception {
+    private void setup(String[] args){
         /* args: <RemoteHost> <Port> <Filename> */
 
         // Try to create file
@@ -47,17 +50,29 @@ public class Sender1a {
         host = args[0];
 
         // initialise other components
-        socket = new DatagramSocket();
-        address = InetAddress.getByName(host);
+        try {
+            socket = new DatagramSocket();
+        } catch (SocketException e) {
+            System.out.println("SOCKET EXCEPTION");
+        }
+
+        try {
+            address = InetAddress.getByName(host);
+        } catch (UnknownHostException e) {
+            System.out.println("UNKNOWN HOST EXCEPTION");
+        }
+
         dataByte = new byte[1024];
 
         // Init file
         try {
-            in = new FileInputStream(file);
+            fin = new FileInputStream(file);
         } catch (FileNotFoundException e) {
-            throw e;
+            System.out.println("FILENOTFOUNDEXCEPTION");
+            //throw e;
         } catch (IOException e) {
-            throw e;
+            System.out.println("IOEXCEPTION");
+            //throw e;
         }
     }
 
@@ -67,28 +82,55 @@ public class Sender1a {
             byte num[] = intToByteArray(seqNum);
             byte eofFlag = (byte) 0;
 
+
+            ByteBuffer bb = ByteBuffer.allocate(num.length + 1 + dataByte.length);
+            bb.put (num);
+            bb.put (eofFlag);
+            bb.put (dataByte);
             // Combine packet
-            List<Byte> packet = new ArrayList<Byte>(Arrays.<Byte>asList(num));
-            packet.addAll(Arrays.<Byte>asList(eofFlag));
-            packet.addAll(Arrays.<Byte>asList(dataByte));
-            byte[] combined = list.toArray(new byte[list.size()]);
+            // List<Byte> packet = new ArrayList<Byte>(Arrays.<Byte>asList(num));
+            // packet.addAll(Arrays.<Byte>asList(eofFlag));
+            // packet.addAll(Arrays.<Byte>asList(dataByte));
+            // byte[] combined = packet.toArray(new byte[packet.size()]);
+            byte[] combined = bb.array();
             // create packet
             DatagramPacket udpPacket = new DatagramPacket(combined, combined.length, address, port);
-            socket.send(packet);
-            seqNum++;
-        }
 
+            try {
+                socket.send(udpPacket);
+            } catch (IOException e){
+                System.out.println("ERROR IN SOCKET SENDING");
+            }
+            System.out.println("Sending packet: " + seqNum);
+            seqNum++;
+            try {
+                Thread.sleep (10);
+            } catch (InterruptedException e){
+
+            }
+
+        }
         byte num[] = intToByteArray(seqNum);
         byte eofFlag = (byte) 1;
 
+
+        ByteBuffer bb = ByteBuffer.allocate(num.length + 1 + dataByte.length);
+        bb.put (num);
+        bb.put (eofFlag);
+        bb.put (dataByte);
         // Combine packet
-        List<Byte> packet = new ArrayList<Byte>(Arrays.<Byte>asList(num));
-        packet.addAll(Arrays.<Byte>asList(eofFlag));
-        packet.addAll(Arrays.<Byte>asList(dataByte));
-        byte[] combined = list.toArray(new byte[list.size()]);
+        // List<Byte> packet = new ArrayList<Byte>(Arrays.<Byte>asList(num));
+        // packet.addAll(Arrays.<Byte>asList(eofFlag));
+        // packet.addAll(Arrays.<Byte>asList(dataByte));
+        // byte[] combined = packet.toArray(new byte[packet.size()]);
+        byte[] combined = bb.array();
         // create packet
         DatagramPacket udpPacket = new DatagramPacket(combined, combined.length, address, port);
-        socket.send(packet);
+        try {
+            socket.send(udpPacket);
+        } catch (IOException e){
+            System.out.println("ERROR IN SOCKET SENDING");
+        }
     }
 
     public static final byte[] intToByteArray(int value) {
@@ -99,11 +141,16 @@ public class Sender1a {
     }
 
     public boolean extractDataChunk() {
+        try {
+            if (fin.read(dataByte) == -1) {
+                // its last file.
+                return false;
+            }
 
-        if (fin.read(dataByte) == -1) {
-            // its last file.
+        } catch (IOException e){
             return false;
         }
+
         return true;
     }
 
@@ -112,11 +159,16 @@ public class Sender1a {
         sender.setup(args);
         // sender.extractData();
         sender.run();
-        sender.fin.close();
+        try {
+            sender.fin.close();
+        } catch (IOException e){
+            System.out.println("ERROR IN FILE CLOSING");
+
+        }
     }
 
     /////////////////////////////////////////////////////////////////////////////////
-    public void extractData() throws FileNotFoundException, IOException {
+    /*public void extractData() throws FileNotFoundException, IOException {
         byte[] input_data = null;
         FileInputStream input_stream = null;
         ByteArrayOutputStream output_stream = null;
@@ -141,8 +193,8 @@ public class Sender1a {
             }
         }
 
-    }
-
+    } */
+/*
     public String sendEcho(String msg) {
         buf = msg.getBytes();
         DatagramPacket packet = new DatagramPacket(buf, buf.length, address, 4445);
@@ -152,5 +204,5 @@ public class Sender1a {
         String received = new String(packet.getData(), 0, packet.getLength());
         return received;
     }
-
+*/
 }

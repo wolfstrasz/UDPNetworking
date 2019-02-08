@@ -9,28 +9,37 @@
 import java.net.DatagramSocket;
 import java.util.Arrays;
 import java.net.DatagramPacket;
+import java.net.*;
 import java.io.*;
+import java.util.*;
 
-public class Receiver1a {
+
+
+public class Receiver1a extends Thread{
 
     private DatagramSocket socket;
     private boolean running;
+    private File file;
+    private int port;
     private byte[] dataByte = new byte[1024];
     private FileOutputStream fout = null;
 
+/*
     public EchoServer() {
         socket = new DatagramSocket(4445);
     }
-
-    private void setup(String[] args) throws FileNotFoundException, Exception {
+*/
+    private void setup(String[] args) {
         /* args: <RemoteHost> <Port> <Filename> */
 
         // Try to create file
-        file = new File(args[1]);
-        if (!file.exists()) {
-            System.out.println("File not found");
-            System.exit(0);
-        }
+    //    file = new File("heelo");
+    //    if (!file.exists()) {
+    //        file.createNewFile();
+        //    System.out.println("File not found IT");
+        //    System.exit(0);
+    //    }
+
 
         // Try to parse Port number
         try {
@@ -43,17 +52,21 @@ public class Receiver1a {
         // host = args[0];
 
         // initialise other components
-        socket = new DatagramSocket();
+        try {
+            socket = new DatagramSocket();
+        } catch (SocketException e) {
+            System.out.println("SOCKET EXCEPTION");
+        }
         // address = InetAddress.getByName(host);
-        dataByte = new byte[1024];
+        dataByte = new byte[1027];
 
         // initfile
         try {
-            fout = new FileOutputStream(file);
+            fout = new FileOutputStream(args[1], false);
         } catch (FileNotFoundException e) {
-            throw e;
+            //throw e;
         } catch (IOException e) {
-            throw e;
+            //throw e;
         }
     }
 
@@ -71,20 +84,44 @@ public class Receiver1a {
         running = true;
 
         while (running) {
-            DatagramPacket packet = new DatagramPacket(dataByte, 2 + 1 + 1024);
-            socket.receive(packet);
-            byte eofFlag;
+            System.out.println("running");
+            //DatagramPacket packet = new DatagramPacket(dataByte, 2 + 1 + 1024);
+            DatagramPacket packet = new DatagramPacket(dataByte, 1024 + 1 + 2);
+            try {
+                socket.receive(packet);
+                System.out.println("got packet");
+            } catch (IOException e){
+                System.out.println("ERROR IN SOCKET RECEIVING");
+
+            }
+
+
             // remove packet header
-            eofFlag = dataByte[2];
-            Arrays.copyOfRange(dataByte, 3, packet.getLength());
+            byte[] seqNum = Arrays.copyOfRange(dataByte, 0, 1);
+            System.out.println("Receive packet: " + seqNum);
+            byte eofFlag = dataByte[2];
+            System.out.println("eof : " +( (int) eofFlag & 0xFF));
+            byte[] data = new byte[1024];
+            data = Arrays.copyOfRange(dataByte, 3, packet.getLength());
             // write data
             // ...
-            fout.write(databyte);
+            try {
+                fout.write(data);
+            } catch (IOException e) {
+                System.out.println("ERROR IN Writing to file");
+
+            }
             // if EOF break;
-            if (((int) eofFlag & 0xFF) == 1)
+            if (((int) eofFlag & 0xFF) == 1){
                 running = false;
+            }
         }
-        fout.close();
+        try {
+            fout.close();
+        } catch (IOException e){
+            System.out.println("ERROR IN Closing file");
+
+        }
         // running = true;
 
         // while (running) {
@@ -106,8 +143,11 @@ public class Receiver1a {
     }
 
     public static void main(String[] args) {
-
+        Receiver1a receiver = new Receiver1a();
+        receiver.setup(args);
         System.out.println("Receiver1a started!");
+        receiver.run();
+        System.out.println("Receiver1a Finished!");
     }
 
 }
