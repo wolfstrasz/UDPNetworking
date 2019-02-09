@@ -58,7 +58,7 @@ public class Receiver1a extends Thread {
 
         // initfile
         try {
-            fout = new FileOutputStream(args[1], false);
+            fout = new FileOutputStream(args[1], true);
         } catch (FileNotFoundException e) {
             // throw e;
         } catch (IOException e) {
@@ -96,7 +96,7 @@ public class Receiver1a extends Thread {
 
             }
             // if EOF break;
-            if (((int) eofFlag & 0xFF) == 1) {
+            if (((int) eofFlag) == 1) {
                 running = false;
             }
         }
@@ -132,10 +132,13 @@ public class Receiver1a extends Thread {
     }
 
     public void extractData() {
-        seqNum = Arrays.copyOfRange(receivedData, 2, 3);
+        seqNum = byteArrayToInt(Arrays.copyOfRange(receivedData, 2, 4));
         System.out.println("Receive packet: " + seqNum);
-        eofFlag = dataByte[4];
-        System.out.println("eof : " + ((int) eofFlag & 0xFF));
+        eofFlag = receivedData[4];
+        System.out.println("eof : " + ((int) eofFlag));
         dataByte = Arrays.copyOfRange(receivedData, HEADER_SIZE, HEADER_SIZE + DATA_SIZE);
+        System.out.println("dataByte size = " + dataByte.length);
+        System.out.println((int)dataByte[0] + " " + (int)dataByte[1] + " ][ " + (int)dataByte[1022] + " " + (int)dataByte[1023]);
+
     }
 }

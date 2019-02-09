@@ -36,6 +36,19 @@ public class Sender1a extends Thread {
     File file;
     FileInputStream fin = null;
 
+
+    // UTILITIES
+
+    public static final int byteArrayToInt(byte[] bytes) {
+        int value = 0;
+        value = (bytes[0] & 0xFF) << 8 | (bytes[1] & 0xFF);
+        for (int i = 0; i < bytes.length; i++) {
+            //value = value << 8;
+            //value = value | ((int) bytes[i] & 0xFF);
+        }
+        return value;
+    }
+
     private void setup(String[] args) {
         /* args: <RemoteHost> <Port> <Filename> */
 
@@ -92,7 +105,7 @@ public class Sender1a extends Thread {
 
     public void run() {
 
-        while (1) {
+        while (true) {
             System.out.println("Creating packet: " + seqNum);
             // create packet
             DatagramPacket packet = createPacket();
@@ -111,7 +124,7 @@ public class Sender1a extends Thread {
             // Sleep
             System.out.println("Sleeping: ");
             try {
-                Thread.sleep(10);
+                Thread.sleep(100);
             } catch (InterruptedException e) {
 
             }
@@ -127,7 +140,7 @@ public class Sender1a extends Thread {
 
     public void close() {
         try {
-            sender.fin.close();
+            fin.close();
         } catch (IOException e) {
             System.out.println("ERROR IN FILE CLOSING");
 
@@ -167,8 +180,13 @@ public class Sender1a extends Thread {
     }
 
     public DatagramPacket createPacket() {
+    //    System.out.println("SEQ       : " + seqNum);
         num = intToByteArray(seqNum);
-        eofFlag = (byte) extractDataChunk();
+    //    System.out.println("SEQ -> NUM: " + num);
+    //    System.out.println("NUM -> SEQ: " + byteArrayToInt(num));
+
+        if(extractDataChunk()) eofFlag = (byte) 0;
+        else eofFlag = (byte )1;
 
         ByteBuffer bb = ByteBuffer.allocate(HEADER_SIZE + DATA_SIZE);
         bb.put((byte) 0); /// Offset
@@ -176,8 +194,14 @@ public class Sender1a extends Thread {
         bb.put(num); /// Sequence Number
         bb.put(eofFlag); /// EoF
         bb.put(dataByte); /// Data
-        byte[] combined = bb.array();
 
+        System.out.println((int)dataByte[0] + " " + (int)dataByte[1] + " ][ " + (int)dataByte[1022] + " " + (int)dataByte[1023]);
+
+        byte[] combined = bb.array();
+        //byte[] cc = {(byte)0,(byte)0};
+    //    int NuMcomb = byteArrayToInt(Arrays.copyOfRange(combined, 2, 4));
+        System.out.println("EOF:" + (int)combined[4]);
+    //    System.out.println("First 2 Bytes / seqNum: " + (int)combined[0] + (int)combined[1] + NuMcomb);
         // create packet
         return new DatagramPacket(combined, combined.length, address, port);
     }
