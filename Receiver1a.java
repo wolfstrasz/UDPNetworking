@@ -22,7 +22,6 @@ public class Receiver1a extends Thread {
     private int port;
 
     /* File vars */
-    private File file;
     private FileOutputStream fout = null;
 
     /* Data vars */
@@ -31,8 +30,6 @@ public class Receiver1a extends Thread {
     byte eofFlag;
     byte num[];
     private byte[] receivedData;
-
-    private boolean running;
 
     /*
      * public EchoServer() { socket = new DatagramSocket(4445); }
@@ -65,17 +62,15 @@ public class Receiver1a extends Thread {
             // throw e;
         }
 
-        this.dataByte = new byte[DATA_SIZE];
+        dataByte = new byte[DATA_SIZE];
         receivedData = new byte[HEADER_SIZE + DATA_SIZE];
-        this.eofFlag = 0;
+        eofFlag = (byte) 0;
 
     }
 
     public void run() {
 
-        running = true;
-
-        while (running) {
+        while (true) {
 
             DatagramPacket packet = new DatagramPacket(receivedData, receivedData.length);
             try {
@@ -83,7 +78,6 @@ public class Receiver1a extends Thread {
                 System.out.println("got packet");
             } catch (IOException e) {
                 System.out.println("ERROR IN SOCKET RECEIVING");
-
             }
 
             extractData();
@@ -96,9 +90,8 @@ public class Receiver1a extends Thread {
 
             }
             // if EOF break;
-            if (((int) eofFlag) == 1) {
-                running = false;
-            }
+            if (((int) eofFlag) == 1)
+                break;
         }
 
     }
@@ -133,12 +126,7 @@ public class Receiver1a extends Thread {
 
     public void extractData() {
         seqNum = byteArrayToInt(Arrays.copyOfRange(receivedData, 2, 4));
-        System.out.println("Receive packet: " + seqNum);
         eofFlag = receivedData[4];
-        System.out.println("eof : " + ((int) eofFlag));
         dataByte = Arrays.copyOfRange(receivedData, HEADER_SIZE, HEADER_SIZE + DATA_SIZE);
-        System.out.println("dataByte size = " + dataByte.length);
-        System.out.println((int)dataByte[0] + " " + (int)dataByte[1] + " ][ " + (int)dataByte[1022] + " " + (int)dataByte[1023]);
-
     }
 }

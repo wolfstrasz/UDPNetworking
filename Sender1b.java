@@ -19,7 +19,7 @@ import java.util.*;
 import java.nio.ByteBuffer;
 import java.util.concurent.TimeUnit;
 
-public class Sender1a extends Thread {
+public class Sender1b extends Thread {
     public static final int DATA_SIZE = 1024;
     public static final int HEADER_SIZE = 5;
 
@@ -36,16 +36,34 @@ public class Sender1a extends Thread {
     /* File vars */
     File file;
     FileInputStream fin = null;
+
     /* Analysis vars */
     Long retransmissions = 0;
     Long transmissionStart = 0;
     Long transmissionEnd = 0;
     Long packetsNumber = 0;
+    Long transmissionTimeout = 0;
+
+    // FSM
+    public enum State {
+        WAIT_CALL_0, WAIT_ACK_0, WAIT_CALL_1, WAIT_ACK_1,
+    };
+
+    State state;
 
     private void setup(String[] args) {
-        /* args: <RemoteHost> <Port> <Filename> */
+        /* args: <RemoteHost> <Port> <Filename> <TransmissionTimeout> */
+        state = State.WAIT_CALL_0;
 
-        // Try to create file
+        // parse transmission timeout
+        try {
+            transmissionTimeout = Integer.parseInt(args[3]);
+        } catch (NumberFormatException e) {
+            System.out.println("Transmission timeout is not an Integer");
+            System.exit(0);
+        }
+
+        // Try to init file
         file = new File(args[2]);
         if (!file.exists()) {
             System.out.println("File not found");
@@ -98,27 +116,42 @@ public class Sender1a extends Thread {
     public void run() {
         transmission_start_time = System.currentTimeMillis();
         while (true) {
-            System.out.println("Creating packet: " + seqNum);
-            // create packet
-            DatagramPacket packet = createPacket();
 
-            // send packet
-            System.out.println("Sending packet: " + seqNum);
-            try {
-                socket.send(packet);
-            } catch (IOException e) {
-                System.out.println("ERROR IN SOCKET SENDING");
+            switch (state) {
+            case WAIT_CALL_0:
+                break;
+            case WAIT_ACK_0:
+                break;
+            case WAIT_CALL_1:
+                break;
+            case WAIT_ACK_1:
+                break;
+            default:
+                System.out.println("FSM reached illegal state.");
+                System.exit(0);
+                break;
             }
+            // System.out.println("Creating packet: " + seqNum);
+            // // create packet
+            // DatagramPacket packet = createPacket();
 
-            seqNum++;
+            // // send packet
+            // System.out.println("Sending packet: " + seqNum);
+            // try {
+            // socket.send(packet);
+            // } catch (IOException e) {
+            // System.out.println("ERROR IN SOCKET SENDING");
+            // }
 
-            // Sleep
-            System.out.println("Sleeping: ");
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
+            // seqNum++;
 
-            }
+            // // Sleep
+            // System.out.println("Sleeping: ");
+            // try {
+            // Thread.sleep(100);
+            // } catch (InterruptedException e) {
+
+            // }
 
             // Check for finish
             if (((int) eofFlag & 0xFF) != 0)
@@ -130,7 +163,7 @@ public class Sender1a extends Thread {
         transmissionEnd = System.currentTimeMillis();
         double time = (transmissionEnd - transmissionStart) * 0.001; // get seconds
         double dataSize = packetsNumber * (HEADER_SIZE + DATA_SIZE) / (double) 1024; // get transmitted data size in KBs
-        System.out.println(dataSize / time);
+        System.out.println(retransmissions + " " + (int) (dataSize / time));
     }
 
     public void close() {
@@ -142,7 +175,7 @@ public class Sender1a extends Thread {
     }
 
     public static void main(String[] args) {
-        Sender1a sender = new Sender1a();
+        Sender1b sender = new Sender1b();
         sender.setup(args);
         sender.run();
         sender.analysis();
