@@ -30,9 +30,11 @@ public class Sender1b extends Thread {
 
     /* data vars */
     private byte[] dataByte;
+    private byte[] ackData;
     int seqNum;
     byte eofFlag;
-
+    DatagramPacket packetOut;
+    DatagramPacket packetIn;
     /* File vars */
     File file;
     FileInputStream fin = null;
@@ -42,7 +44,7 @@ public class Sender1b extends Thread {
     Long transmissionStart = 0;
     Long transmissionEnd = 0;
     Long packetsNumber = 0;
-    Long transmissionTimeout = 0;
+    int transmissionTimeout = 0;
 
     // FSM
     public enum State {
@@ -54,7 +56,7 @@ public class Sender1b extends Thread {
     private void setup(String[] args) {
         /* args: <RemoteHost> <Port> <Filename> <TransmissionTimeout> */
         state = State.WAIT_CALL_0;
-
+        ackData = new byte[HEADER_SIZE];
         // parse transmission timeout
         try {
             transmissionTimeout = Integer.parseInt(args[3]);
@@ -93,6 +95,12 @@ public class Sender1b extends Thread {
             System.exit(0);
 
         }
+        // set timeout
+        try {
+            socket.setSoTimeout(transmissionTimeout);
+        } catch (SocketException e) {
+            e.printStackTrace();
+        }
 
         // Init file
         try {
@@ -108,7 +116,7 @@ public class Sender1b extends Thread {
 
             // throw e;
         }
-
+        packetIn = new DatagramPacket(ackData, ackData.length);
         dataByte = new byte[DATA_SIZE];
         seqNum = 0;
     }
@@ -119,39 +127,53 @@ public class Sender1b extends Thread {
 
             switch (state) {
             case WAIT_CALL_0:
+                seqNum = 0;
+                createPacket();
+                sendPacket();
+                // startTimer();
+                state = State.WAIT_ACK_0;
                 break;
             case WAIT_ACK_0:
+                try {
+                    receivePacket();
+                } catch (SocketTimeoutException e) {
+                    retransmissions++;
+                    sendPacket();
+                    break;
+                }
+
+                if (isACK(0)) {
+                    state = STATE.WAIT_CALL_1;
+                }
+
                 break;
+
             case WAIT_CALL_1:
+                seqNumber = 1;
+                createPacket();
+                sendPacket();
+                // startTimer();
+                state = State.WAIT_ACK_1;
                 break;
+
             case WAIT_ACK_1:
+                try {
+                    receivePacket();
+                } catch (SocketTimeoutException e) {
+                    retransmissions++;
+                    sendPacket();
+                    break;
+                }
+
+                if (isACK(1)) {
+                    state = STATE.WAIT_CALL_0;
+                }
                 break;
             default:
                 System.out.println("FSM reached illegal state.");
                 System.exit(0);
                 break;
             }
-            // System.out.println("Creating packet: " + seqNum);
-            // // create packet
-            // DatagramPacket packet = createPacket();
-
-            // // send packet
-            // System.out.println("Sending packet: " + seqNum);
-            // try {
-            // socket.send(packet);
-            // } catch (IOException e) {
-            // System.out.println("ERROR IN SOCKET SENDING");
-            // }
-
-            // seqNum++;
-
-            // // Sleep
-            // System.out.println("Sleeping: ");
-            // try {
-            // Thread.sleep(100);
-            // } catch (InterruptedException e) {
-
-            // }
 
             // Check for finish
             if (((int) eofFlag & 0xFF) != 0)
@@ -206,7 +228,7 @@ public class Sender1b extends Thread {
         eofFlag = (byte) 0;
     }
 
-    public DatagramPacket createPacket() {
+    public void createPacket() {
 
         extractDataChunk();
 
@@ -220,6 +242,31 @@ public class Sender1b extends Thread {
         byte[] combined = bb.array();
 
         // create packet
-        return new DatagramPacket(combined, combined.length, address, port);
+        packetOut = new DatagramPacket(combined, combined.length, address, port);
+        // return new DatagramPacket(combined, combined.length, address, port);
+    }
+
+    public void sendPacket() {
+        System.out.println("Sending packet: " + seqNum);
+        try {
+            socket.send(packetOut);
+        } catch (IOException e) {
+            System.out.println("ERROR IN SOCKET SENDING");
+        }
+    }
+
+    public bool isACK(int number) {
+        ackNumber = byteArrayToInt(Arrays.copyOfRange(receivedData, 2, 4));
+        return number == ackNumber ? true : false;
+    }
+
+    public void receivePacket() throws SocketTimeoutException {
+
+        try {
+            socket.receive(packetIn);
+            // System.out.println("got packet ACK");
+        } catch (IOException e) {
+            System.out.println("ERROR IN SOCKET RECEIVING");
+        }
     }
 }
