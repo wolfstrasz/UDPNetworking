@@ -30,12 +30,16 @@ public class Sender1a extends Thread {
 
     /* data vars */
     private byte[] dataByte;
-    int seqNum;
-    byte eofFlag;
+    int seqNum = 0;
+    byte eofFlag = 0;
 
     /* File vars */
-    File file;
     FileInputStream fin = null;
+    int fileSize;
+    int fullReads;
+    int leftover;
+    File file;
+
     /* Analysis vars */
     Long retransmissions = 0;
     Long transmissionStart = 0;
@@ -48,22 +52,24 @@ public class Sender1a extends Thread {
         // Try to create file
         file = new File(args[2]);
         if (!file.exists()) {
-            System.out.println("File not found");
+            System.out.println("ERROR: FILE NOT FOUND");
             System.exit(0);
         }
-
+        fileSize = file.length();
+        fullReads = file.length() / DATA_SIZE;
+        leftover = file.length() - (fullReads * DATA_SIZE);
         // Try to parse Port number
         try {
             this.port = Integer.parseInt(args[1]);
         } catch (NumberFormatException e) {
-            System.out.println("Port is not an Integer");
+            System.out.println("ERROR: PORT IS NOT AN INTEGER");
             System.exit(0);
         }
         // Try to get host
         try {
             address = InetAddress.getByName(args[0]);
         } catch (UnknownHostException e) {
-            System.out.println("UNKNOWN HOST EXCEPTION");
+            System.out.println("ERROR: UNKNOWN HOST");
             System.exit(0);
         }
 
@@ -71,56 +77,48 @@ public class Sender1a extends Thread {
         try {
             socket = new DatagramSocket();
         } catch (SocketException e) {
-            System.out.println("SOCKET EXCEPTION");
+            System.out.println("ERROR: SOCKET OPENING EXCEPTION");
             System.exit(0);
-
         }
 
         // Init file
         try {
             fin = new FileInputStream(file);
         } catch (FileNotFoundException e) {
-            System.out.println("FILENOTFOUNDEXCEPTION");
+            System.out.println("ERROR: FILE FOR READ NOT FOUND");
             System.exit(0);
-
-            // throw e;
         } catch (IOException e) {
-            System.out.println("IOEXCEPTION");
+            System.out.println("ERROR: EXCEPTION IN FILE OPENING");
             System.exit(0);
-
-            // throw e;
         }
-
-        dataByte = new byte[DATA_SIZE];
-        seqNum = 0;
     }
 
     public void run() {
         transmission_start_time = System.currentTimeMillis();
         while (true) {
-            System.out.println("Creating packet: " + seqNum);
             // create packet
+            // System.out.println("Creating packet: " + seqNum);
             DatagramPacket packet = createPacket();
 
             // send packet
-            System.out.println("Sending packet: " + seqNum);
+            // System.out.println("Sending packet: " + seqNum);
             try {
                 socket.send(packet);
             } catch (IOException e) {
-                System.out.println("ERROR IN SOCKET SENDING");
+                System.out.println("ERROR: SOCKET PACKET SENDING");
             }
 
             seqNum++;
 
-            // Sleep
-            System.out.println("Sleeping: ");
+            // sleep
+            // System.out.println("Sleeping: ");
             try {
                 Thread.sleep(100);
             } catch (InterruptedException e) {
 
             }
 
-            // Check for finish
+            // check for finish
             if (((int) eofFlag & 0xFF) != 0)
                 break;
         }
@@ -130,14 +128,21 @@ public class Sender1a extends Thread {
         transmissionEnd = System.currentTimeMillis();
         double time = (transmissionEnd - transmissionStart) * 0.001; // get seconds
         double dataSize = packetsNumber * (HEADER_SIZE + DATA_SIZE) / (double) 1024; // get transmitted data size in KBs
-        System.out.println(dataSize / time);
+        System.out.println((int) (dataSize / time));
     }
 
     public void close() {
         try {
             fin.close();
         } catch (IOException e) {
-            System.out.println("ERROR IN FILE CLOSING");
+            System.out.println("ERROR: FILE STREAM CANNOT CLOSE");
+            System.exit(0);
+        }
+        try {
+            socket.close();
+        } catch (SocketException e) {
+            System.out.println("ERROR: SOCKET CANNOT CLOSE");
+            System.exit(0);
         }
     }
 
@@ -158,26 +163,34 @@ public class Sender1a extends Thread {
     }
 
     public boolean extractDataChunk() {
-        try {
-            if (fin.read(dataByte) == -1) {
-                // its last file.
-                eofFlag = (byte) 1;
+        if (fullReads > 0) {
+            dataByte = new byte[DATA_SIZE];
+            try {
+                fin.read(dataByte);
+                fullReads--;
+                eofFlag = (byte) 0;
+            } catch (IOException e) {
+                System.out.println("ERROR: CANNOT EXTRACT FULL DATA CHUNK");
+                System.exit(0);
+                // return false;
             }
-
-        } catch (IOException e) {
-            System.out.println("IOException at extractDataChunk()");
-            System.exit(0);
-            // return false;
+        } else {
+            dataByte = new byte[leftover];
+            try {
+                fin.read(dataByte);
+                eofFlag = (byte) 1;
+            } catch (IOException e) {
+                System.out.println("ERROR: CANNOT EXTRACT DATA CHUNK");
+                System.exit(0);
+                // return false;
+            }
         }
-
-        eofFlag = (byte) 0;
     }
 
     public DatagramPacket createPacket() {
-
         extractDataChunk();
 
-        ByteBuffer bb = ByteBuffer.allocate(HEADER_SIZE + DATA_SIZE);
+        ByteBuffer bb = ByteBuffer.allocate(HEADER_SIZE + dataByte.length);
         bb.put((byte) 0); /// Offset
         bb.put((byte) 0); /// Octet
         bb.put(intToByteArray(seqNum)); /// Sequence Number

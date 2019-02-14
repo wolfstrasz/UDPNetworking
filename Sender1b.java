@@ -260,13 +260,12 @@ public class Sender1b extends Thread {
         return number == ackNumber ? true : false;
     }
 
-    public void receivePacket() throws SocketTimeoutException {
-
+    public void receivePacket() {
         try {
             socket.receive(packetIn);
-            // System.out.println("got packet ACK");
         } catch (IOException e) {
-            System.out.println("ERROR IN SOCKET RECEIVING");
+            System.out.println("ERROR: PACKET RECEIVING");
+            System.exit(0);
         }
     }
 }

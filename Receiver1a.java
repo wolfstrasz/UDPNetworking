@@ -25,15 +25,13 @@ public class Receiver1a extends Thread {
     private FileOutputStream fout = null;
 
     /* Data vars */
-    private byte[] dataByte;
     int seqNum;
     byte eofFlag;
     byte num[];
-    private byte[] receivedData;
+    private byte[] packetData = new byte[DATA_SIZE + HEADER_SIZE];
+    private byte[] dataByte;
+    DatagramPacket packet;
 
-    /*
-     * public EchoServer() { socket = new DatagramSocket(4445); }
-     */
     private void setup(String[] args) {
         /* args: <RemoteHost> <Port> <Filename> */
 
@@ -41,7 +39,7 @@ public class Receiver1a extends Thread {
         try {
             this.port = Integer.parseInt(args[0]);
         } catch (NumberFormatException e) {
-            System.out.println("Port is not an Integer");
+            System.out.println("ERROR: PORT IS NOT AN INTEGER");
             System.exit(0);
         }
 
@@ -49,7 +47,7 @@ public class Receiver1a extends Thread {
         try {
             this.socket = new DatagramSocket(port);
         } catch (SocketException e) {
-            System.out.println("SOCKET EXCEPTION");
+            System.out.println("ERROR: SOCKET OPENING EXCEPTION");
             System.exit(0);
         }
 
@@ -57,27 +55,23 @@ public class Receiver1a extends Thread {
         try {
             fout = new FileOutputStream(args[1], true);
         } catch (FileNotFoundException e) {
-            // throw e;
+            System.out.println("ERROR: FILE FOR WRITE NOT FOUND");
+            System.exit(0);
         } catch (IOException e) {
-            // throw e;
+            System.out.println("ERROR: EXCEPTION IN FILE OPENING");
+            System.exit(0);
         }
-
-        dataByte = new byte[DATA_SIZE];
-        receivedData = new byte[HEADER_SIZE + DATA_SIZE];
-        eofFlag = (byte) 0;
-
     }
 
     public void run() {
-
         while (true) {
 
-            DatagramPacket packet = new DatagramPacket(receivedData, receivedData.length);
+            packet = new DatagramPacket(packetData, packetData.length);
             try {
                 socket.receive(packet);
-                System.out.println("got packet");
+                // System.out.println("got packet");
             } catch (IOException e) {
-                System.out.println("ERROR IN SOCKET RECEIVING");
+                System.out.println("ERROR: CANNOT RECEIVE PACKET");
             }
 
             extractData();
@@ -86,8 +80,7 @@ public class Receiver1a extends Thread {
             try {
                 fout.write(dataByte);
             } catch (IOException e) {
-                System.out.println("ERROR IN Writing to file");
-
+                System.out.println("ERROR: CANNOT WRITE TO FILE");
             }
             // if EOF break;
             if (((int) eofFlag) == 1)
@@ -100,8 +93,13 @@ public class Receiver1a extends Thread {
         try {
             fout.close();
         } catch (IOException e) {
-            System.out.println("ERROR IN Closing file");
-
+            System.out.println("ERROR: CANNOT CLOSE FILE");
+        }
+        try {
+            socket.close();
+        } catch (SocketException e) {
+            System.out.println("ERROR: SOCKET CANNOT CLOSE");
+            System.exit(0);
         }
     }
 
@@ -110,7 +108,7 @@ public class Receiver1a extends Thread {
         receiver.setup(args);
         receiver.run();
         receiver.close();
-        System.out.println("Receiver1a Finished!");
+        // System.out.println("Receiver1a Finished!");
     }
 
     // UTILITIES
@@ -127,6 +125,7 @@ public class Receiver1a extends Thread {
     public void extractData() {
         seqNum = byteArrayToInt(Arrays.copyOfRange(receivedData, 2, 4));
         eofFlag = receivedData[4];
-        dataByte = Arrays.copyOfRange(receivedData, HEADER_SIZE, HEADER_SIZE + DATA_SIZE);
+        dataByte = new byte[packet.getLength()];
+        dataByte = Arrays.copyOfRange(receivedData, HEADER_SIZE, HEADER_SIZE + packet.getLength());
     }
 }
