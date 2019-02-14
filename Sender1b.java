@@ -123,9 +123,7 @@ public class Sender1b extends Thread {
 
             // throw e;
         }
-        packetIn = new DatagramPacket(ackData, ackData.length);
-        dataByte = new byte[DATA_SIZE];
-        seqNum = 0;
+        packetIn = new DatagramPacket(ackData, HEADER_SIZE);
     }
 
     public void run() {
@@ -279,7 +277,7 @@ public class Sender1b extends Thread {
 
     // PACKET RECEIVING
     public bool isACK(int number) {
-        ackNumber = byteArrayToInt(Arrays.copyOfRange(receivedData, 2, 4));
+        ackNumber = byteArrayToInt(Arrays.copyOfRange(ackData, 2, 4));
         return number == ackNumber ? true : false;
     }
 

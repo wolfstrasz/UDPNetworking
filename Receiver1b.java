@@ -25,11 +25,12 @@ public class Receiver1b extends Thread {
     private FileOutputStream fout = null;
 
     /* Data vars */
-    private byte[] dataByte;
     int seqNum;
     byte eofFlag;
     byte num[];
-    private byte[] receivedData;
+    private byte[] packetData = new byte[DATA_SIZE + HEADER_SIZE];
+    private byte[] dataByte;
+    DatagramPacket packetIn;
 
     // FSM
     public enum State {
@@ -126,8 +127,13 @@ public class Receiver1b extends Thread {
         try {
             fout.close();
         } catch (IOException e) {
-            System.out.println("ERROR IN Closing file");
-
+            System.out.println("ERROR: CANNOT CLOSE FILE");
+        }
+        try {
+            socket.close();
+        } catch (SocketException e) {
+            System.out.println("ERROR: SOCKET CANNOT CLOSE");
+            System.exit(0);
         }
     }
 
@@ -136,11 +142,10 @@ public class Receiver1b extends Thread {
         receiver.setup(args);
         receiver.run();
         receiver.close();
-        System.out.println("Receiver1a Finished!");
+        // System.out.println("Receiver1a Finished!");
     }
 
     // UTILITIES
-
     public static final int byteArrayToInt(byte[] bytes) {
         int value = 0;
         for (int i = 0; i < bytes.length; i++) {
@@ -153,15 +158,25 @@ public class Receiver1b extends Thread {
     public void extractData() {
         seqNum = byteArrayToInt(Arrays.copyOfRange(receivedData, 2, 4));
         eofFlag = receivedData[4];
-        dataByte = Arrays.copyOfRange(receivedData, HEADER_SIZE, HEADER_SIZE + DATA_SIZE);
+        dataByte = new byte[packet.getLength()];
+        dataByte = Arrays.copyOfRange(receivedData, HEADER_SIZE, HEADER_SIZE + packet.getLength());
     }
 
+    // PACKET RECEIVING
     public void writeData() {
         try {
             fout.write(dataByte);
         } catch (IOException e) {
             System.out.println("ERROR IN Writing to file");
+        }
+    }
 
+    public void receiveData() {
+        try {
+            socket.receive(packetIn);
+            // System.out.println("got packet");
+        } catch (IOException e) {
+            System.out.println("ERROR: CANNOT RECEIVE PACKET");
         }
     }
 }

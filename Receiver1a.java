@@ -67,21 +67,10 @@ public class Receiver1a extends Thread {
         while (true) {
 
             packet = new DatagramPacket(packetData, packetData.length);
-            try {
-                socket.receive(packet);
-                // System.out.println("got packet");
-            } catch (IOException e) {
-                System.out.println("ERROR: CANNOT RECEIVE PACKET");
-            }
 
+            receiveData();
             extractData();
-
-            // write data
-            try {
-                fout.write(dataByte);
-            } catch (IOException e) {
-                System.out.println("ERROR: CANNOT WRITE TO FILE");
-            }
+            writeData();
             // if EOF break;
             if (((int) eofFlag) == 1)
                 break;
@@ -127,5 +116,22 @@ public class Receiver1a extends Thread {
         eofFlag = receivedData[4];
         dataByte = new byte[packet.getLength()];
         dataByte = Arrays.copyOfRange(receivedData, HEADER_SIZE, HEADER_SIZE + packet.getLength());
+    }
+
+    public void writeData() {
+        try {
+            fout.write(dataByte);
+        } catch (IOException e) {
+            System.out.println("ERROR IN Writing to file");
+        }
+    }
+
+    public void receiveData() {
+        try {
+            socket.receive(packet);
+            // System.out.println("got packet");
+        } catch (IOException e) {
+            System.out.println("ERROR: CANNOT RECEIVE PACKET");
+        }
     }
 }
