@@ -35,8 +35,12 @@ public class Sender1b extends Thread {
     byte eofFlag;
     DatagramPacket packetOut;
     DatagramPacket packetIn;
+
     /* File vars */
     File file;
+    int fileSize;
+    int fullReads;
+    int leftover;
     FileInputStream fin = null;
 
     /* Analysis vars */
@@ -71,6 +75,9 @@ public class Sender1b extends Thread {
             System.out.println("File not found");
             System.exit(0);
         }
+        fileSize = file.length();
+        fullReads = file.length() / DATA_SIZE;
+        leftover = file.length() - (fullReads * DATA_SIZE);
 
         // Try to parse Port number
         try {
@@ -149,7 +156,7 @@ public class Sender1b extends Thread {
                 break;
 
             case WAIT_CALL_1:
-                seqNumber = 1;
+                seqNum = 1;
                 createPacket();
                 sendPacket();
                 // startTimer();
@@ -192,7 +199,14 @@ public class Sender1b extends Thread {
         try {
             fin.close();
         } catch (IOException e) {
-            System.out.println("ERROR IN FILE CLOSING");
+            System.out.println("ERROR: FILE STREAM CANNOT CLOSE");
+            System.exit(0);
+        }
+        try {
+            socket.close();
+        } catch (SocketException e) {
+            System.out.println("ERROR: SOCKET CANNOT CLOSE");
+            System.exit(0);
         }
     }
 
@@ -212,27 +226,36 @@ public class Sender1b extends Thread {
                 (byte) (value >>> 8), (byte) value };
     }
 
-    public boolean extractDataChunk() {
-        try {
-            if (fin.read(dataByte) == -1) {
-                // its last file.
-                eofFlag = (byte) 1;
+    // PACKET SENDING
+    public void extractDataChunk() {
+        if (fullReads > 0) {
+            dataByte = new byte[DATA_SIZE];
+            try {
+                fin.read(dataByte);
+                fullReads--;
+                eofFlag = (byte) 0;
+            } catch (IOException e) {
+                System.out.println("ERROR: CANNOT EXTRACT FULL DATA CHUNK");
+                System.exit(0);
+                // return false;
             }
-
-        } catch (IOException e) {
-            System.out.println("IOException at extractDataChunk()");
-            System.exit(0);
-            // return false;
+        } else {
+            dataByte = new byte[leftover];
+            try {
+                fin.read(dataByte);
+                eofFlag = (byte) 1;
+            } catch (IOException e) {
+                System.out.println("ERROR: CANNOT EXTRACT DATA CHUNK");
+                System.exit(0);
+                // return false;
+            }
         }
-
-        eofFlag = (byte) 0;
     }
 
-    public void createPacket() {
-
+    public DatagramPacket createPacket() {
         extractDataChunk();
 
-        ByteBuffer bb = ByteBuffer.allocate(HEADER_SIZE + DATA_SIZE);
+        ByteBuffer bb = ByteBuffer.allocate(HEADER_SIZE + dataByte.length);
         bb.put((byte) 0); /// Offset
         bb.put((byte) 0); /// Octet
         bb.put(intToByteArray(seqNum)); /// Sequence Number
@@ -242,12 +265,11 @@ public class Sender1b extends Thread {
         byte[] combined = bb.array();
 
         // create packet
-        packetOut = new DatagramPacket(combined, combined.length, address, port);
-        // return new DatagramPacket(combined, combined.length, address, port);
+        return new DatagramPacket(combined, combined.length, address, port);
     }
 
     public void sendPacket() {
-        System.out.println("Sending packet: " + seqNum);
+        // System.out.println("Sending packet: " + seqNum);
         try {
             socket.send(packetOut);
         } catch (IOException e) {
@@ -255,6 +277,7 @@ public class Sender1b extends Thread {
         }
     }
 
+    // PACKET RECEIVING
     public bool isACK(int number) {
         ackNumber = byteArrayToInt(Arrays.copyOfRange(receivedData, 2, 4));
         return number == ackNumber ? true : false;

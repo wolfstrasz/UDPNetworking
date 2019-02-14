@@ -96,26 +96,17 @@ public class Sender1a extends Thread {
     public void run() {
         transmission_start_time = System.currentTimeMillis();
         while (true) {
-            // create packet
-            // System.out.println("Creating packet: " + seqNum);
+
             DatagramPacket packet = createPacket();
-
-            // send packet
-            // System.out.println("Sending packet: " + seqNum);
-            try {
-                socket.send(packet);
-            } catch (IOException e) {
-                System.out.println("ERROR: SOCKET PACKET SENDING");
-            }
-
+            sendPacket();
             seqNum++;
 
             // sleep
-            // System.out.println("Sleeping: ");
             try {
                 Thread.sleep(100);
             } catch (InterruptedException e) {
-
+                System.out.println("ERROR: THREAD SLEEP");
+                System.exit(0);
             }
 
             // check for finish
@@ -162,7 +153,7 @@ public class Sender1a extends Thread {
                 (byte) (value >>> 8), (byte) value };
     }
 
-    public boolean extractDataChunk() {
+    public void extractDataChunk() {
         if (fullReads > 0) {
             dataByte = new byte[DATA_SIZE];
             try {
@@ -201,5 +192,14 @@ public class Sender1a extends Thread {
 
         // create packet
         return new DatagramPacket(combined, combined.length, address, port);
+    }
+
+    public void sendPacket() {
+        // System.out.println("Sending packet: " + seqNum);
+        try {
+            socket.send(packet);
+        } catch (IOException e) {
+            System.out.println("ERROR IN SOCKET SENDING");
+        }
     }
 }
