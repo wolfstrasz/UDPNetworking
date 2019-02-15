@@ -32,7 +32,7 @@ public class Receiver1b extends Thread {
     private byte[] dataByte;
     DatagramPacket packetIn;
 
-    // FSM
+    // FSMw
     public enum State {
         WAIT_RECEIVE_0, WAIT_RECEIVE_1,
     };
@@ -63,7 +63,7 @@ public class Receiver1b extends Thread {
 
         // initfile
         try {
-            fout = new FileOutputStream(args[1], true);
+            fout = new FileOutputStream(args[1], false);
         } catch (FileNotFoundException e) {
             // throw e;
         } catch (IOException e) {

@@ -53,7 +53,7 @@ public class Receiver1a extends Thread {
 
         // initfile
         try {
-            fout = new FileOutputStream(args[1], true);
+            fout = new FileOutputStream(args[1], false);
         } catch (FileNotFoundException e) {
             System.out.println("ERROR: FILE FOR WRITE NOT FOUND");
             System.exit(0);
@@ -114,7 +114,7 @@ public class Receiver1a extends Thread {
     public void extractData() {
         seqNum = byteArrayToInt(Arrays.copyOfRange(receivedData, 2, 4));
         eofFlag = receivedData[4];
-        dataByte = new byte[packet.getLength()];
+        dataByte = new byte[packet.getLength() - HEADER_SIZE];
         dataByte = Arrays.copyOfRange(receivedData, HEADER_SIZE, HEADER_SIZE + packet.getLength());
     }
 
