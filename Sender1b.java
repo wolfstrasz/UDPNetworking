@@ -17,14 +17,15 @@ import java.net.*;
 import java.io.*;
 import java.util.*;
 import java.nio.ByteBuffer;
-import java.util.concurent.TimeUnit;
+import java.util.concurrent.TimeUnit;
 
 public class Sender1b extends Thread {
     public static final int DATA_SIZE = 1024;
     public static final int HEADER_SIZE = 5;
 
     /* connection vars */
-    private DatagramSocket socket;
+    private DatagramSocket socketIn;
+    private DatagramSocket socketOut;
     private InetAddress address;
     private int port;
 
@@ -44,11 +45,11 @@ public class Sender1b extends Thread {
     FileInputStream fin = null;
 
     /* Analysis vars */
-    Long retransmissions = 0;
-    Long transmissionStart = 0;
-    Long transmissionEnd = 0;
-    Long packetsNumber = 0;
-    int transmissionTimeout = 0;
+    Long retransmissions;
+    Long transmissionStart;
+    Long transmissionEnd;
+    Long packetsNumber;
+    int transmissionTimeout;
 
     // FSM
     public enum State {
@@ -60,7 +61,6 @@ public class Sender1b extends Thread {
     private void setup(String[] args) {
         /* args: <RemoteHost> <Port> <Filename> <TransmissionTimeout> */
         state = State.WAIT_CALL_0;
-        ackData = new byte[HEADER_SIZE];
         // parse transmission timeout
         try {
             transmissionTimeout = Integer.parseInt(args[3]);
@@ -75,9 +75,9 @@ public class Sender1b extends Thread {
             System.out.println("File not found");
             System.exit(0);
         }
-        fileSize = file.length();
-        fullReads = file.length() / DATA_SIZE;
-        leftover = file.length() - (fullReads * DATA_SIZE);
+        fileSize = (int)file.length();
+        fullReads = fileSize / DATA_SIZE;
+        leftover = fileSize - (fullReads * DATA_SIZE);
 
         // Try to parse Port number
         try {
@@ -96,7 +96,15 @@ public class Sender1b extends Thread {
 
         // initialise other components
         try {
-            socket = new DatagramSocket(port);
+            socketIn = new DatagramSocket(port+1);
+        } catch (SocketException e) {
+            System.out.println("SOCKET EXCEPTION");
+            System.exit(0);
+
+        }
+
+        try {
+            socketOut = new DatagramSocket();
         } catch (SocketException e) {
             System.out.println("SOCKET EXCEPTION");
             System.exit(0);
@@ -104,7 +112,7 @@ public class Sender1b extends Thread {
         }
         // set timeout
         try {
-            socket.setSoTimeout(transmissionTimeout);
+            socketIn.setSoTimeout(transmissionTimeout);
         } catch (SocketException e) {
             e.printStackTrace();
         }
@@ -117,17 +125,18 @@ public class Sender1b extends Thread {
             System.exit(0);
 
             // throw e;
-        } catch (IOException e) {
-            System.out.println("IOEXCEPTION");
-            System.exit(0);
+        // } catch (IOException e) {
+        //     System.out.println("IOEXCEPTION");
+        //     System.exit(0);
 
-            // throw e;
+        //     // throw e;
         }
-        packetIn = new DatagramPacket(ackData, HEADER_SIZE - 1);
+        ackData = new byte[HEADER_SIZE-1];
+        packetIn = new DatagramPacket(ackData, ackData.length);
     }
 
     public void run() {
-        transmission_start_time = System.currentTimeMillis();
+        transmissionStart = System.currentTimeMillis();
         while (true) {
 
             switch (state) {
@@ -145,10 +154,10 @@ public class Sender1b extends Thread {
                     retransmissions++;
                     sendPacket();
                     break;
-                }
+                } 
 
                 if (isACK(0)) {
-                    state = STATE.WAIT_CALL_1;
+                    state = State.WAIT_CALL_1;
                 }
 
                 break;
@@ -171,7 +180,7 @@ public class Sender1b extends Thread {
                 }
 
                 if (isACK(1)) {
-                    state = STATE.WAIT_CALL_0;
+                    state = State.WAIT_CALL_0;
                 }
                 break;
             default:
@@ -189,8 +198,8 @@ public class Sender1b extends Thread {
     public void analysis() {
         transmissionEnd = System.currentTimeMillis();
         double time = (transmissionEnd - transmissionStart) * 0.001; // get seconds
-        double dataSize = packetsNumber * (HEADER_SIZE + DATA_SIZE) / (double) 1024; // get transmitted data size in KBs
-        System.out.println(retransmissions + " " + (int) (dataSize / time));
+        double dataSize = 1000 * (HEADER_SIZE + DATA_SIZE) / (double) 1024; // get transmitted data size in KBs
+        //System.out.println(retransmissions + " " + (int) (dataSize / time));
     }
 
     public void close() {
@@ -200,12 +209,13 @@ public class Sender1b extends Thread {
             System.out.println("ERROR: FILE STREAM CANNOT CLOSE");
             System.exit(0);
         }
-        try {
-            socket.close();
-        } catch (SocketException e) {
-            System.out.println("ERROR: SOCKET CANNOT CLOSE");
-            System.exit(0);
-        }
+        // try {
+            socketIn.close();
+            socketOut.close();
+        // } catch (SocketException e) {
+        //     System.out.println("ERROR: SOCKET CANNOT CLOSE");
+        //     System.exit(0);
+        // }
     }
 
     public static void main(String[] args) {
@@ -224,6 +234,15 @@ public class Sender1b extends Thread {
                 (byte) (value >>> 8), (byte) value };
     }
 
+    public static final int byteArrayToInt(byte[] bytes) {
+        int value = 0;
+        for (int i = 0; i < bytes.length; i++) {
+            value = value << 8;
+            value = value | ((int) bytes[i] & 0xFF);
+        }
+        return value;
+    }
+    
     // PACKET SENDING
     public void extractDataChunk() {
         if (fullReads > 0) {
@@ -250,7 +269,7 @@ public class Sender1b extends Thread {
         }
     }
 
-    public DatagramPacket createPacket() {
+    public void createPacket() {
         extractDataChunk();
 
         ByteBuffer bb = ByteBuffer.allocate(HEADER_SIZE + dataByte.length);
@@ -263,29 +282,31 @@ public class Sender1b extends Thread {
         byte[] combined = bb.array();
 
         // create packet
-        return new DatagramPacket(combined, combined.length, address, port);
+        packetOut = new DatagramPacket(combined, combined.length, address, port);
     }
 
     public void sendPacket() {
         // System.out.println("Sending packet: " + seqNum);
         try {
-            socket.send(packetOut);
+            socketOut.send(packetOut);
         } catch (IOException e) {
             System.out.println("ERROR IN SOCKET SENDING");
         }
     }
 
     // PACKET RECEIVING
-    public bool isACK(int number) {
-        ackNumber = byteArrayToInt(Arrays.copyOfRange(ackData, 2, 4));
+    public boolean isACK(int number) {
+        int ackNumber = byteArrayToInt(Arrays.copyOfRange(ackData, 2, 4));
         return number == ackNumber ? true : false;
     }
 
-    public void receivePacket() {
+    public void receivePacket() throws SocketTimeoutException{
         try {
-            socket.receive(packetIn);
+            socketIn.receive(packetIn);
+        } catch (SocketTimeoutException e) {
+           throw e;
         } catch (IOException e) {
-            System.out.println("ERROR: PACKET RECEIVING");
+            System.out.println("ERROR: IO Exception at Packet RECEIVE");
             System.exit(0);
         }
     }
