@@ -20,7 +20,7 @@ public class Receiver1b extends Thread {
     /* connection vars */
     private DatagramSocket socket;
     private int port;
-
+    private InetAddress address;
     /* File vars */
     private FileOutputStream fout = null;
 
@@ -31,6 +31,7 @@ public class Receiver1b extends Thread {
     private byte[] packetData = new byte[DATA_SIZE + HEADER_SIZE];
     private byte[] dataByte;
     DatagramPacket packetIn;
+    DatagramPacket packetOut;
 
     // FSMw
     public enum State {
@@ -74,6 +75,13 @@ public class Receiver1b extends Thread {
         receivedData = new byte[HEADER_SIZE + DATA_SIZE];
         eofFlag = (byte) 0;
 
+        try {
+            address = InetAddress.getByName("localhost");
+        } catch (UnknownHostException e) {
+            System.out.println("UNKNOWN HOST EXCEPTION");
+            System.exit(0);
+        }
+
     }
 
     public void run() {
@@ -82,30 +90,26 @@ public class Receiver1b extends Thread {
             switch (state) {
             case WAIT_RECEIVE_0:
                 receivePacket();
-                if (isACK(1)) {
-                    seqNum = 1;
-                    createPacket();
+                extractData();
+                if (seqNum == 1) {
+                    createACKPacket();
                     sendPacket();
                 } else {
-                    extractData();
                     writeData();
-                    seqNum = 0;
-                    createPacket();
+                    createACKPacket();
                     sendPacket();
                     state = State.WAIT_RECEIVE_1;
                 }
                 break;
             case WAIT_RECEIVE_1:
                 receivePacket();
-                if (isACK(0)) {
-                    seqNum = 0;
-                    createPacket();
+                extractData();
+                if (seqNum == 0) {
+                    createACKPacket();
                     sendPacket();
                 } else {
-                    extractData();
                     writeData();
-                    seqNum = 1;
-                    createPacket();
+                    createACKPacket();
                     sendPacket();
                     state = State.WAIT_RECEIVE_1;
                 }
@@ -155,22 +159,7 @@ public class Receiver1b extends Thread {
         return value;
     }
 
-    public void extractData() {
-        seqNum = byteArrayToInt(Arrays.copyOfRange(receivedData, 2, 4));
-        eofFlag = receivedData[4];
-        dataByte = new byte[packet.getLength()];
-        dataByte = Arrays.copyOfRange(receivedData, HEADER_SIZE, HEADER_SIZE + packet.getLength());
-    }
-
     // PACKET RECEIVING
-    public void writeData() {
-        try {
-            fout.write(dataByte);
-        } catch (IOException e) {
-            System.out.println("ERROR IN Writing to file");
-        }
-    }
-
     public void receiveData() {
         try {
             socket.receive(packetIn);
@@ -179,4 +168,41 @@ public class Receiver1b extends Thread {
             System.out.println("ERROR: CANNOT RECEIVE PACKET");
         }
     }
+
+    public void extractData() {
+        seqNum = byteArrayToInt(Arrays.copyOfRange(receivedData, 2, 4));
+        eofFlag = receivedData[4];
+        dataByte = new byte[packet.getLength()];
+        dataByte = Arrays.copyOfRange(receivedData, HEADER_SIZE, HEADER_SIZE + packet.getLength());
+    }
+
+    public void writeData() {
+        try {
+            fout.write(dataByte);
+        } catch (IOException e) {
+            System.out.println("ERROR IN Writing to file");
+        }
+    }
+
+    // PACKET SENDING
+    public DatagramPacket createACKPacket() {
+        ByteBuffer bb = ByteBuffer.allocate(HEADER_SIZE - 1);
+        bb.put((byte) 0); /// Offset
+        bb.put((byte) 0); /// Octet
+        bb.put(intToByteArray(seqNum)); /// Sequence Number
+        byte[] combined = bb.array();
+
+        // create packet
+        return new DatagramPacket(combined, combined.length, address, port);
+    }
+
+    public void sendPacket() {
+        // System.out.println("Sending packet: " + seqNum);
+        try {
+            socket.send(packetOut);
+        } catch (IOException e) {
+            System.out.println("ERROR IN SOCKET SENDING");
+        }
+    }
+
 }

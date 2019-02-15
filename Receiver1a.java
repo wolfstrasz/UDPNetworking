@@ -57,9 +57,9 @@ public class Receiver1a extends Thread {
         } catch (FileNotFoundException e) {
             System.out.println("ERROR: FILE FOR WRITE NOT FOUND");
             System.exit(0);
-        } catch (IOException e) {
-            System.out.println("ERROR: EXCEPTION IN FILE OPENING");
-            System.exit(0);
+        // } catch (IOException e) {
+        //     System.out.println("ERROR: EXCEPTION IN FILE OPENING");
+        //     System.exit(0);
         }
     }
 
@@ -84,12 +84,12 @@ public class Receiver1a extends Thread {
         } catch (IOException e) {
             System.out.println("ERROR: CANNOT CLOSE FILE");
         }
-        try {
+        // try {
             socket.close();
-        } catch (SocketException e) {
-            System.out.println("ERROR: SOCKET CANNOT CLOSE");
-            System.exit(0);
-        }
+        // } catch (SocketException e) {
+        //     System.out.println("ERROR: SOCKET CANNOT CLOSE");
+        //     System.exit(0);
+        // }
     }
 
     public static void main(String[] args) {
@@ -112,10 +112,11 @@ public class Receiver1a extends Thread {
     }
 
     public void extractData() {
-        seqNum = byteArrayToInt(Arrays.copyOfRange(receivedData, 2, 4));
-        eofFlag = receivedData[4];
+        seqNum = byteArrayToInt(Arrays.copyOfRange(packetData, 2, 4));
+        eofFlag = packetData[4];
         dataByte = new byte[packet.getLength() - HEADER_SIZE];
-        dataByte = Arrays.copyOfRange(receivedData, HEADER_SIZE, HEADER_SIZE + packet.getLength());
+        dataByte = Arrays.copyOfRange(packetData, HEADER_SIZE, packet.getLength());
+        System.out.println("PACKET: " + seqNum + "  size: " + dataByte.length);
     }
 
     public void writeData() {

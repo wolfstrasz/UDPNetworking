@@ -17,7 +17,7 @@ import java.net.*;
 import java.io.*;
 import java.util.*;
 import java.nio.ByteBuffer;
-import java.util.concurent.TimeUnit;
+import java.util.concurrent.TimeUnit;
 
 public class Sender1a extends Thread {
     public static final int DATA_SIZE = 1024;
@@ -25,6 +25,7 @@ public class Sender1a extends Thread {
 
     /* connection vars */
     private DatagramSocket socket;
+    private DatagramPacket packet;
     private InetAddress address;
     private int port;
 
@@ -41,10 +42,10 @@ public class Sender1a extends Thread {
     File file;
 
     /* Analysis vars */
-    Long retransmissions = 0;
-    Long transmissionStart = 0;
-    Long transmissionEnd = 0;
-    Long packetsNumber = 0;
+    Long retransmissions;
+    Long transmissionStart;
+    Long transmissionEnd;
+    Long packetsNumber;
 
     private void setup(String[] args) {
         /* args: <RemoteHost> <Port> <Filename> */
@@ -55,9 +56,12 @@ public class Sender1a extends Thread {
             System.out.println("ERROR: FILE NOT FOUND");
             System.exit(0);
         }
-        fileSize = file.length();
-        fullReads = file.length() / DATA_SIZE;
-        leftover = file.length() - (fullReads * DATA_SIZE);
+        fileSize = (int) file.length();
+      //  System.out.println("filesize" + fileSize);
+        fullReads = fileSize / DATA_SIZE;
+      //  System.out.println("filesize" + fullReads);
+        leftover = fileSize - (fullReads * DATA_SIZE);
+      //  System.out.println("filesize" + leftover);
         // Try to parse Port number
         try {
             this.port = Integer.parseInt(args[1]);
@@ -87,18 +91,20 @@ public class Sender1a extends Thread {
         } catch (FileNotFoundException e) {
             System.out.println("ERROR: FILE FOR READ NOT FOUND");
             System.exit(0);
-        } catch (IOException e) {
-            System.out.println("ERROR: EXCEPTION IN FILE OPENING");
-            System.exit(0);
         }
+
+        eofFlag = (byte)0;
     }
 
     public void run() {
-        transmission_start_time = System.currentTimeMillis();
+        transmissionStart = System.currentTimeMillis();
         while (true) {
 
-            DatagramPacket packet = createPacket();
+        //    System.out.println("Here 1");
+            packet = createPacket();
+        //    System.out.println("Here 2");
             sendPacket();
+        //    System.out.println("Here 3");
             seqNum++;
 
             // sleep
@@ -108,7 +114,7 @@ public class Sender1a extends Thread {
                 System.out.println("ERROR: THREAD SLEEP");
                 System.exit(0);
             }
-
+           // System.out.println("Here 4");
             // check for finish
             if (((int) eofFlag & 0xFF) != 0)
                 break;
@@ -118,7 +124,7 @@ public class Sender1a extends Thread {
     public void analysis() {
         transmissionEnd = System.currentTimeMillis();
         double time = (transmissionEnd - transmissionStart) * 0.001; // get seconds
-        double dataSize = packetsNumber * (HEADER_SIZE + DATA_SIZE) / (double) 1024; // get transmitted data size in KBs
+        double dataSize = seqNum * (HEADER_SIZE + DATA_SIZE) / (double) 1024; // get transmitted data size in KBs
         System.out.println((int) (dataSize / time));
     }
 
@@ -129,12 +135,8 @@ public class Sender1a extends Thread {
             System.out.println("ERROR: FILE STREAM CANNOT CLOSE");
             System.exit(0);
         }
-        try {
-            socket.close();
-        } catch (SocketException e) {
-            System.out.println("ERROR: SOCKET CANNOT CLOSE");
-            System.exit(0);
-        }
+
+        socket.close();
     }
 
     public static void main(String[] args) {
@@ -191,6 +193,8 @@ public class Sender1a extends Thread {
         byte[] combined = bb.array();
 
         // create packet
+
+        System.out.println("Packet #" + seqNum + " length: " + combined.length);
         return new DatagramPacket(combined, combined.length, address, port);
     }
 

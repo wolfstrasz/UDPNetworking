@@ -96,7 +96,7 @@ public class Sender1b extends Thread {
 
         // initialise other components
         try {
-            socket = new DatagramSocket();
+            socket = new DatagramSocket(port);
         } catch (SocketException e) {
             System.out.println("SOCKET EXCEPTION");
             System.exit(0);
@@ -123,7 +123,7 @@ public class Sender1b extends Thread {
 
             // throw e;
         }
-        packetIn = new DatagramPacket(ackData, HEADER_SIZE);
+        packetIn = new DatagramPacket(ackData, HEADER_SIZE - 1);
     }
 
     public void run() {
