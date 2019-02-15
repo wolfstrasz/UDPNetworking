@@ -116,7 +116,7 @@ public class Receiver1a extends Thread {
         eofFlag = packetData[4];
         dataByte = new byte[packet.getLength() - HEADER_SIZE];
         dataByte = Arrays.copyOfRange(packetData, HEADER_SIZE, packet.getLength());
-        System.out.println("PACKET: " + seqNum + "  size: " + dataByte.length);
+        //System.out.println("PACKET: " + seqNum + "  size: " + dataByte.length);
     }
 
     public void writeData() {

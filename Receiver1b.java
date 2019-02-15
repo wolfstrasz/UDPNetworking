@@ -9,6 +9,7 @@
 import java.net.DatagramSocket;
 import java.util.Arrays;
 import java.net.DatagramPacket;
+import java.nio.ByteBuffer;
 import java.net.*;
 import java.io.*;
 import java.util.*;
@@ -18,7 +19,8 @@ public class Receiver1b extends Thread {
     public static final int HEADER_SIZE = 5;
 
     /* connection vars */
-    private DatagramSocket socket;
+    private DatagramSocket socketIn;
+    private DatagramSocket socketOut;
     private int port;
     private InetAddress address;
     /* File vars */
@@ -40,9 +42,6 @@ public class Receiver1b extends Thread {
 
     State state;
 
-    /*
-     * public EchoServer() { socket = new DatagramSocket(4445); }
-     */
     private void setup(String[] args) {
         /* args: <RemoteHost> <Port> <Filename> */
         state = State.WAIT_RECEIVE_0;
@@ -56,8 +55,15 @@ public class Receiver1b extends Thread {
 
         // initialise other components
         try {
-            this.socket = new DatagramSocket(port);
+            socketIn = new DatagramSocket(port);
         } catch (SocketException e) {
+            System.out.println("SOCKET EXCEPTION");
+            System.exit(0);
+        }
+
+        try {
+            socketOut = new DatagramSocket();
+        } catch( SocketException e) {
             System.out.println("SOCKET EXCEPTION");
             System.exit(0);
         }
@@ -67,12 +73,12 @@ public class Receiver1b extends Thread {
             fout = new FileOutputStream(args[1], false);
         } catch (FileNotFoundException e) {
             // throw e;
-        } catch (IOException e) {
-            // throw e;
+        // } catch (IOException e) {
+        //     // throw e;
         }
 
         dataByte = new byte[DATA_SIZE];
-        receivedData = new byte[HEADER_SIZE + DATA_SIZE];
+        packetData = new byte[HEADER_SIZE + DATA_SIZE];
         eofFlag = (byte) 0;
 
         try {
@@ -81,7 +87,7 @@ public class Receiver1b extends Thread {
             System.out.println("UNKNOWN HOST EXCEPTION");
             System.exit(0);
         }
-
+        packetIn = new DatagramPacket(packetData, packetData.length);
     }
 
     public void run() {
@@ -89,6 +95,8 @@ public class Receiver1b extends Thread {
         while (true) {
             switch (state) {
             case WAIT_RECEIVE_0:
+            //System.out.println("IN STATE: WAIT_RECEIVE_0");
+
                 receivePacket();
                 extractData();
                 if (seqNum == 1) {
@@ -102,6 +110,8 @@ public class Receiver1b extends Thread {
                 }
                 break;
             case WAIT_RECEIVE_1:
+            //System.out.println("IN STATE: WAIT_RECEIVE_1");
+
                 receivePacket();
                 extractData();
                 if (seqNum == 0) {
@@ -111,7 +121,7 @@ public class Receiver1b extends Thread {
                     writeData();
                     createACKPacket();
                     sendPacket();
-                    state = State.WAIT_RECEIVE_1;
+                    state = State.WAIT_RECEIVE_0;
                 }
                 break;
             default:
@@ -133,12 +143,18 @@ public class Receiver1b extends Thread {
         } catch (IOException e) {
             System.out.println("ERROR: CANNOT CLOSE FILE");
         }
-        try {
-            socket.close();
-        } catch (SocketException e) {
-            System.out.println("ERROR: SOCKET CANNOT CLOSE");
-            System.exit(0);
-        }
+        // try {
+            socketIn.close();
+        // } catch (SocketException e) {
+        //     System.out.println("ERROR: SOCKET CANNOT CLOSE");
+        //     System.exit(0);
+        // }
+        // try {
+            socketOut.close();
+        // } catch (SocketException e) {
+            // System.out.println("ERROR: SOCKET CANNOT CLOSE");
+            // System.exit(0);
+        // }
     }
 
     public static void main(String[] args) {
@@ -150,6 +166,13 @@ public class Receiver1b extends Thread {
     }
 
     // UTILITIES
+    public static final byte[] intToByteArray(int value) {
+        return new byte[] {
+                // (byte)(value >>> 24),
+                // (byte)(value >>> 16),
+                (byte) (value >>> 8), (byte) value };
+    }
+
     public static final int byteArrayToInt(byte[] bytes) {
         int value = 0;
         for (int i = 0; i < bytes.length; i++) {
@@ -160,9 +183,9 @@ public class Receiver1b extends Thread {
     }
 
     // PACKET RECEIVING
-    public void receiveData() {
+    public void receivePacket() {
         try {
-            socket.receive(packetIn);
+            socketIn.receive(packetIn);
             // System.out.println("got packet");
         } catch (IOException e) {
             System.out.println("ERROR: CANNOT RECEIVE PACKET");
@@ -170,10 +193,11 @@ public class Receiver1b extends Thread {
     }
 
     public void extractData() {
-        seqNum = byteArrayToInt(Arrays.copyOfRange(receivedData, 2, 4));
-        eofFlag = receivedData[4];
-        dataByte = new byte[packet.getLength()];
-        dataByte = Arrays.copyOfRange(receivedData, HEADER_SIZE, HEADER_SIZE + packet.getLength());
+        seqNum = byteArrayToInt(Arrays.copyOfRange(packetData, 2, 4));
+        eofFlag = packetData[4];
+        dataByte = new byte[packetIn.getLength() - HEADER_SIZE];
+        dataByte = Arrays.copyOfRange(packetData, HEADER_SIZE, packetIn.getLength());
+        //System.out.println("Receiving packet size == " + dataByte.length);
     }
 
     public void writeData() {
@@ -185,7 +209,7 @@ public class Receiver1b extends Thread {
     }
 
     // PACKET SENDING
-    public DatagramPacket createACKPacket() {
+    public void createACKPacket() {
         ByteBuffer bb = ByteBuffer.allocate(HEADER_SIZE - 1);
         bb.put((byte) 0); /// Offset
         bb.put((byte) 0); /// Octet
@@ -193,13 +217,14 @@ public class Receiver1b extends Thread {
         byte[] combined = bb.array();
 
         // create packet
-        return new DatagramPacket(combined, combined.length, address, port);
+        packetOut = new DatagramPacket(combined, combined.length, address, port+1);
+        //System.out.println("Sending ACK packet size == " + packetOut.getLength());
     }
 
     public void sendPacket() {
         // System.out.println("Sending packet: " + seqNum);
         try {
-            socket.send(packetOut);
+            socketOut.send(packetOut);
         } catch (IOException e) {
             System.out.println("ERROR IN SOCKET SENDING");
         }

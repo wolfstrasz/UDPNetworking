@@ -45,12 +45,12 @@ public class Sender1b extends Thread {
     FileInputStream fin = null;
 
     /* Analysis vars */
-    Long retransmissions;
-    Long transmissionStart;
-    Long transmissionEnd;
-    Long packetsNumber;
+    int retransmissions;
+    long transmissionStart;
+    long transmissionEnd;
+    long packetsNumber;
     int transmissionTimeout;
-
+    long transmittedDataSize;
     // FSM
     public enum State {
         WAIT_CALL_0, WAIT_ACK_0, WAIT_CALL_1, WAIT_ACK_1,
@@ -137,50 +137,85 @@ public class Sender1b extends Thread {
 
     public void run() {
         transmissionStart = System.currentTimeMillis();
+        boolean last_ack_received = false;
+        int last_ack_tries = 0;
         while (true) {
 
             switch (state) {
             case WAIT_CALL_0:
+            //System.out.println("IN STATE: WAIT_CALL_0");
+
                 seqNum = 0;
                 createPacket();
+                transmittedDataSize +=  packetOut.getLength();
                 sendPacket();
                 // startTimer();
                 state = State.WAIT_ACK_0;
                 break;
             case WAIT_ACK_0:
+                //System.out.println("IN STATE: WAIT_ACK_0");
                 try {
                     receivePacket();
                 } catch (SocketTimeoutException e) {
-                    retransmissions++;
+                    //    System.out.println("SOCKET TIMEOUT");
+                    if (((int) eofFlag & 0xFF) != 0){
+                        last_ack_tries ++;
+                    } else retransmissions++;
+                    //        System.out.println("MORE STUFF");
+                    transmittedDataSize +=  packetOut.getLength();
                     sendPacket();
                     break;
-                } 
+                } catch (IOException e){
+                    //retransmissions++;
+                //    retransmissions = retransmissions + 1;
+                    //sendPacket();
+                    break;
+                }
 
                 if (isACK(0)) {
                     state = State.WAIT_CALL_1;
+                    if (((int) eofFlag & 0xFF) != 0)
+                        last_ack_received = true;
                 }
 
                 break;
 
             case WAIT_CALL_1:
+            //System.out.println("IN STATE: WAIT_CALL_1");
+
                 seqNum = 1;
                 createPacket();
+                transmittedDataSize +=  packetOut.getLength();
                 sendPacket();
                 // startTimer();
                 state = State.WAIT_ACK_1;
                 break;
 
             case WAIT_ACK_1:
+            //System.out.println("IN STATE: WAIT_ACK_1");
+
                 try {
                     receivePacket();
                 } catch (SocketTimeoutException e) {
-                    retransmissions++;
+                //    System.out.println("SOCKET TIMEOUT");
+                //    retransmissions = retransmissions + 1;
+                    if (((int) eofFlag & 0xFF) != 0){
+                        last_ack_tries ++;
+                    } else retransmissions++;
+
+                    transmittedDataSize +=  packetOut.getLength();
                     sendPacket();
+                    break;
+                } catch (IOException e){
+                    //retransmissions = retransmissions + 1;
+                    //sendPacket();
                     break;
                 }
 
                 if (isACK(1)) {
                     state = State.WAIT_CALL_0;
+                    if (((int) eofFlag & 0xFF) != 0)
+                        last_ack_received = true;
                 }
                 break;
             default:
@@ -190,7 +225,7 @@ public class Sender1b extends Thread {
             }
 
             // Check for finish
-            if (((int) eofFlag & 0xFF) != 0)
+            if ((((int) eofFlag & 0xFF) != 0 && last_ack_received) || last_ack_tries > 10)
                 break;
         }
     }
@@ -198,8 +233,14 @@ public class Sender1b extends Thread {
     public void analysis() {
         transmissionEnd = System.currentTimeMillis();
         double time = (transmissionEnd - transmissionStart) * 0.001; // get seconds
-        double dataSize = 1000 * (HEADER_SIZE + DATA_SIZE) / (double) 1024; // get transmitted data size in KBs
-        //System.out.println(retransmissions + " " + (int) (dataSize / time));
+        //System.out.println("DATA (Clean):" + fullReads);
+        //System.out.println("DATA (I) : " + (fullReads + 1 + retransmissions) );
+        //System.out.println("DATA (B) : " + (fullReads + 1 + retransmissions) * (HEADER_SIZE + DATA_SIZE));
+        //double dataSize = (fullReads + 1 + retransmissions) * ((HEADER_SIZE + DATA_SIZE) / (double) 1024); // get transmitted data size in KBs
+        double dataSize = transmittedDataSize / (double)1024; /* due to the fact that transmittedDataSize is in Bytes */
+        //System.out.println("TIME (s)   : " + time);
+        //System.out.println("DATA (Kb) : " + dataSize);
+        System.out.println(retransmissions + " " + (int) (dataSize / time));
     }
 
     public void close() {
@@ -242,7 +283,7 @@ public class Sender1b extends Thread {
         }
         return value;
     }
-    
+
     // PACKET SENDING
     public void extractDataChunk() {
         if (fullReads > 0) {
@@ -283,6 +324,7 @@ public class Sender1b extends Thread {
 
         // create packet
         packetOut = new DatagramPacket(combined, combined.length, address, port);
+        //System.out.println("Sending packet size == " + packetOut.getLength());
     }
 
     public void sendPacket() {
@@ -297,17 +339,17 @@ public class Sender1b extends Thread {
     // PACKET RECEIVING
     public boolean isACK(int number) {
         int ackNumber = byteArrayToInt(Arrays.copyOfRange(ackData, 2, 4));
+        //System.out.println("Receiving packet size == " + ackData.length);
         return number == ackNumber ? true : false;
     }
 
-    public void receivePacket() throws SocketTimeoutException{
+    public void receivePacket() throws SocketTimeoutException, IOException{
         try {
             socketIn.receive(packetIn);
         } catch (SocketTimeoutException e) {
            throw e;
         } catch (IOException e) {
-            System.out.println("ERROR: IO Exception at Packet RECEIVE");
-            System.exit(0);
+            throw e;
         }
     }
 }

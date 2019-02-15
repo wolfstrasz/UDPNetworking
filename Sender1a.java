@@ -41,11 +41,11 @@ public class Sender1a extends Thread {
     int leftover;
     File file;
 
-    /* Analysis vars */
-    Long retransmissions;
-    Long transmissionStart;
-    Long transmissionEnd;
-    Long packetsNumber;
+    // /* Analysis vars */
+    // Long retransmissions;
+    // Long transmissionStart;
+    // Long transmissionEnd;
+    // Long packetsNumber;
 
     private void setup(String[] args) {
         /* args: <RemoteHost> <Port> <Filename> */
@@ -63,6 +63,12 @@ public class Sender1a extends Thread {
         leftover = fileSize - (fullReads * DATA_SIZE);
       //  System.out.println("filesize" + leftover);
         // Try to parse Port number
+        // try {
+        //     DatagramSocket soki = new DatagramSocket(port);
+        // }catch (SocketException e) {
+        //     System.out.println("ERROR: SOCKET OPENING EXCEPTION");
+        //     System.exit(0);
+        // }
         try {
             this.port = Integer.parseInt(args[1]);
         } catch (NumberFormatException e) {
@@ -97,7 +103,7 @@ public class Sender1a extends Thread {
     }
 
     public void run() {
-        transmissionStart = System.currentTimeMillis();
+        //transmissionStart = System.currentTimeMillis();
         while (true) {
 
         //    System.out.println("Here 1");
@@ -109,7 +115,7 @@ public class Sender1a extends Thread {
 
             // sleep
             try {
-                Thread.sleep(100);
+                Thread.sleep(10);
             } catch (InterruptedException e) {
                 System.out.println("ERROR: THREAD SLEEP");
                 System.exit(0);
@@ -121,12 +127,12 @@ public class Sender1a extends Thread {
         }
     }
 
-    public void analysis() {
-        transmissionEnd = System.currentTimeMillis();
-        double time = (transmissionEnd - transmissionStart) * 0.001; // get seconds
-        double dataSize = seqNum * (HEADER_SIZE + DATA_SIZE) / (double) 1024; // get transmitted data size in KBs
-        System.out.println((int) (dataSize / time));
-    }
+    // public void analysis() {
+    //     transmissionEnd = System.currentTimeMillis();
+    //     double time = (transmissionEnd - transmissionStart) * 0.001; // get seconds
+    //     double dataSize = seqNum * (HEADER_SIZE + DATA_SIZE) / (double) 1024; // get transmitted data size in KBs
+    //     System.out.println((int) (dataSize / time));
+    // }
 
     public void close() {
         try {
@@ -143,7 +149,7 @@ public class Sender1a extends Thread {
         Sender1a sender = new Sender1a();
         sender.setup(args);
         sender.run();
-        sender.analysis();
+    //    sender.analysis();
         sender.close();
     }
 
@@ -194,7 +200,7 @@ public class Sender1a extends Thread {
 
         // create packet
 
-        System.out.println("Packet #" + seqNum + " length: " + combined.length);
+        //System.out.println("Packet #" + seqNum + " length: " + combined.length);
         return new DatagramPacket(combined, combined.length, address, port);
     }
 
