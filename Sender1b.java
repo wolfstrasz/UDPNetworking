@@ -50,7 +50,7 @@ public class Sender1b extends Thread {
     long transmissionEnd;
     long packetsNumber;
     int transmissionTimeout;
-    long transmittedDataSize;
+    //long transmittedDataSize;
     // FSM
     public enum State {
         WAIT_CALL_0, WAIT_ACK_0, WAIT_CALL_1, WAIT_ACK_1,
@@ -147,7 +147,7 @@ public class Sender1b extends Thread {
 
                 seqNum = 0;
                 createPacket();
-                transmittedDataSize +=  packetOut.getLength();
+            //    transmittedDataSize +=  packetOut.getLength();
                 sendPacket();
                 // startTimer();
                 state = State.WAIT_ACK_0;
@@ -162,7 +162,7 @@ public class Sender1b extends Thread {
                         last_ack_tries ++;
                     } else retransmissions++;
                     //        System.out.println("MORE STUFF");
-                    transmittedDataSize +=  packetOut.getLength();
+                //    transmittedDataSize +=  packetOut.getLength();
                     sendPacket();
                     break;
                 } catch (IOException e){
@@ -185,7 +185,7 @@ public class Sender1b extends Thread {
 
                 seqNum = 1;
                 createPacket();
-                transmittedDataSize +=  packetOut.getLength();
+                //transmittedDataSize +=  packetOut.getLength();
                 sendPacket();
                 // startTimer();
                 state = State.WAIT_ACK_1;
@@ -203,7 +203,7 @@ public class Sender1b extends Thread {
                         last_ack_tries ++;
                     } else retransmissions++;
 
-                    transmittedDataSize +=  packetOut.getLength();
+                //    transmittedDataSize +=  packetOut.getLength();
                     sendPacket();
                     break;
                 } catch (IOException e){
@@ -237,7 +237,7 @@ public class Sender1b extends Thread {
         //System.out.println("DATA (I) : " + (fullReads + 1 + retransmissions) );
         //System.out.println("DATA (B) : " + (fullReads + 1 + retransmissions) * (HEADER_SIZE + DATA_SIZE));
         //double dataSize = (fullReads + 1 + retransmissions) * ((HEADER_SIZE + DATA_SIZE) / (double) 1024); // get transmitted data size in KBs
-        double dataSize = transmittedDataSize / (double)1024; /* due to the fact that transmittedDataSize is in Bytes */
+        double dataSize = fileSize / (double)1024;
         //System.out.println("TIME (s)   : " + time);
         //System.out.println("DATA (Kb) : " + dataSize);
         System.out.println(retransmissions + " " + (int) (dataSize / time));

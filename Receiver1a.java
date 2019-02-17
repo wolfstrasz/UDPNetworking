@@ -14,9 +14,8 @@ import java.io.*;
 import java.util.*;
 
 public class Receiver1a extends Thread {
-    public static final int DATA_SIZE = 1024;
     public static final int HEADER_SIZE = 5;
-
+    public static final int MAX_PACKET_SIZE = 1029;
     /* connection vars */
     private DatagramSocket socket;
     private int port;
@@ -28,7 +27,7 @@ public class Receiver1a extends Thread {
     int seqNum;
     byte eofFlag;
     byte num[];
-    private byte[] packetData = new byte[DATA_SIZE + HEADER_SIZE];
+    private byte[] packetData = new byte[MAX_PACKET_SIZE];
     private byte[] dataByte;
     DatagramPacket packet;
 
