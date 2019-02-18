@@ -81,13 +81,14 @@ public class Receiver2a extends Thread {
     }
 
     public void run() {
-
+        //System.out.println("Server Running");
         while (true) {
 
             receivePacket();
             extractData();
-
+            //System.out.println("Received packet: " + seqNum);
             if (seqNum == nextSeqNum) {
+                //System.out.println("Writing and sending ACK");
                 writeData();
                 createACKPacket();
                 sendPacket();
@@ -96,6 +97,7 @@ public class Receiver2a extends Thread {
                 if (((int) eofFlag) == 1)
                     break;
             } else {
+                //System.out.println("Sending old ACK packet");
                 sendPacket();
             }
         }

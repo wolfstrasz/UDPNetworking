@@ -73,7 +73,6 @@ public class Sender2a extends Thread {
         fileSize = (int)file.length();
         fullReads = fileSize / DATA_SIZE;
         leftover = fileSize - (fullReads * DATA_SIZE);
-
         // Try to parse Port number
         try {
             this.port = Integer.parseInt(args[1]);
@@ -125,12 +124,13 @@ public class Sender2a extends Thread {
         seqNum = 0;
         baseNum = 0;
         ackData = new byte[HEADER_SIZE-1];
-        packetsOut = new HashMap<>();
+        packetsOut = new HashMap<Integer, DatagramPacket>();
         packetIn = new DatagramPacket(ackData, ackData.length);
     }
 
     public void run() {
         int num_resends = 0;
+        //System.out.println("Client Running");
         for (; packetsOut.size()< windowSize; ){
             createPacket();
             seqNum ++;
@@ -142,27 +142,39 @@ public class Sender2a extends Thread {
             try {
                 socketIn.receive(packetIn);
             } catch (SocketTimeoutException e) {
-                num_resends ++;
                 sendAllPackets();
-                continue;
+                num_resends ++;
+                if (num_resends > 10) break;
             } catch (IOException e) {
                 System.out.println("ERROR: IO Exception at SocketIn receive packet");
                 System.exit(0);
             }
 
             if (isACK(baseNum)){
-                packetsOut.remove(baseNum);
-                baseNum = (baseNum + 1) % MAX_SEQ_NUM;
+            //    System.out.println("Received ACK: " + baseNum);
 
-                if (((int) eofFlag & 0xFF) != 0) {
+
+                packetsOut.remove(baseNum);
+
+
+                baseNum = (baseNum + 1) % MAX_SEQ_NUM;
+            //    System.out.println("EOF = " + ((int) eofFlag & 0xFF));
+                num_resends = 0; // nullify it!!!
+                if (((int) eofFlag & 0xFF) == 0) {
+
                     createPacket();
+
+                    //System.out.println("Sending packet: " + seqNum);
                     seqNum = (seqNum + 1) % MAX_SEQ_NUM;
                     sendLastPacket();
                 }
+
             }
 
+
+
             // Check for finish
-            if ((((int) eofFlag & 0xFF) != 0 && packetsOut.size() == 0) || num_resends > 10)
+            if (((int) eofFlag & 0xFF) != 0 && packetsOut.size() == 0)
                 break;
         }
     }
@@ -258,7 +270,6 @@ public class Sender2a extends Thread {
     }
 
     private void sendLastPacket() {
-        // System.out.println("Sending packet: " + seqNum);
         try {
             socketOut.send(lastPacket);
         } catch (IOException e) {
@@ -267,7 +278,10 @@ public class Sender2a extends Thread {
     }
 
     private void sendAllPackets() {
-        for (Integer i : packetsOut.keySet()){
+    //    System.out.println("SendAllPackets:");
+
+        for (int i = baseNum; i < baseNum + packetsOut.size() ; i++){
+        //   System.out.println("Packet: " + i);
             try {
                 socketOut.send(packetsOut.get(i));
             } catch (IOException e) {
@@ -280,7 +294,8 @@ public class Sender2a extends Thread {
     private boolean isACK(int number) {
         int ackNumber = byteArrayToInt(Arrays.copyOfRange(ackData, 2, 4));
         //System.out.println("Receiving packet size == " + ackData.length);
-        return number == ackNumber;
+        // return number == ackNumber;
+        return number <= ackNumber;
     }
 
 
