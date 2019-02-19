@@ -1,6 +1,9 @@
 /* Forename Surname MatriculationNumber */
 /* Boyan Yotov s1509922*/
 
+/* References:
+    Java Create Own Timer: https://stackoverflow.com/questions/10820033/make-a-simple-timer-in-java
+ */
 
 import java.net.DatagramSocket;
 import java.net.DatagramPacket;
@@ -9,6 +12,7 @@ import java.net.*;
 import java.io.*;
 import java.util.*;
 import java.nio.ByteBuffer;
+
 //import java.util.concurrent.TimeUnit;
 
 public class Sender2a extends Thread {
@@ -44,7 +48,8 @@ public class Sender2a extends Thread {
     /* Analysis vars */
     private long transmissionStart;
     private int transmissionTimeout;
-
+    /* Timing vars */
+    MyTimer timer;
     private void setup(String[] args) {
         /* args: <RemoteHost> <Port> <Filename> <TransmissionTimeout> <WindowSize>*/
         // parse window size;
@@ -106,7 +111,7 @@ public class Sender2a extends Thread {
         }
         // set timeout
         try {
-            socketIn.setSoTimeout(transmissionTimeout);
+            socketIn.setSoTimeout(1); // switching timeout to be calculated by private timer otherwise through put is low
         } catch (SocketException e) {
             e.printStackTrace();
         }
@@ -136,26 +141,31 @@ public class Sender2a extends Thread {
             seqNum ++;
         }
         transmissionStart = System.currentTimeMillis();
+        timer = new MyTimer(transmissionTimeout);
+        timer.start();
         sendAllPackets();
         while (true) {
-            // Try to receive ack
+            // Try to receive a packet
             try {
                 socketIn.receive(packetIn);
             } catch (SocketTimeoutException e) {
-                sendAllPackets();
-                num_resends ++;
-                if (num_resends > 10) break;
+
+                // if timeout for first packet
+                if(timer.isTimeout()) {
+                    sendAllPackets();
+                    timer.start();
+                    num_resends++;
+                    if (num_resends > 10) break;
+                }
             } catch (IOException e) {
                 System.out.println("ERROR: IO Exception at SocketIn receive packet");
                 System.exit(0);
             }
 
-            if (isACK(baseNum)){
+            while (isACK(baseNum)){
             //    System.out.println("Received ACK: " + baseNum);
 
-
                 packetsOut.remove(baseNum);
-
 
                 baseNum = (baseNum + 1) % MAX_SEQ_NUM;
             //    System.out.println("EOF = " + ((int) eofFlag & 0xFF));
@@ -295,8 +305,22 @@ public class Sender2a extends Thread {
         int ackNumber = byteArrayToInt(Arrays.copyOfRange(ackData, 2, 4));
         //System.out.println("Receiving packet size == " + ackData.length);
         // return number == ackNumber;
-        return number <= ackNumber;
+        return number <= ackNumber; // Edit so if we receive higher ack we can remove all previous ones from being sent
     }
 
-
+    // Own timer class:
+    public class MyTimer {
+        long startTime;
+        long timeoutTime;
+        public MyTimer (long timeoutTime){
+            this.timeoutTime = timeoutTime;
+        }
+        public void start(){
+            startTime = System.currentTimeMillis();
+        }
+        public boolean isTimeout(){
+            long endTime = System.currentTimeMillis();
+            return timeoutTime < (endTime - startTime);
+        }
+    }
 }
