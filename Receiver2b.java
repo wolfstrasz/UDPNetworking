@@ -11,7 +11,7 @@ import java.util.*;
 public class Receiver2b extends Thread {
     private static final int DATA_SIZE = 1024;
     private static final int HEADER_SIZE = 5;
-    private static final int MAX_SEQ_NUM = 65535;
+    private int MAX_SEQ_NUM = 65535;
 
     /* connection vars */
     private DatagramSocket socketIn;
@@ -23,7 +23,8 @@ public class Receiver2b extends Thread {
 
     /* Data vars */
     private int seqNum;
-    private int nextSeqNum;
+   // private int nextSeqNum;
+    private int baseNum;
     private int windowSize;
     private byte eofFlag;
     private byte num[];
@@ -87,27 +88,34 @@ public class Receiver2b extends Thread {
         }
         packetIn = new DatagramPacket(packetData, packetData.length);
         seqNum = 0;
-        nextSeqNum = 0;
+        //nextSeqNum = 0;
     }
 
     public void run() {
-
+        baseNum = 0;
+        boolean gotLast = false;
+       // nextSeqNum = 0;
+        MAX_SEQ_NUM = windowSize * 2;
         while (true) {
 
             receivePacket();
             extractData();
-
-            if (seqNum == nextSeqNum) {
+            if (seqNum == baseNum){
                 writeData();
                 createACKPacket();
                 sendPacket();
-                nextSeqNum++;
-                // only stop working when  seqNum == nextSeqNum and this is the last packet
-                if (((int) eofFlag) == 1)
-                    break;
-            } else {
+                baseNum = (baseNum + 1 ) % MAX_SEQ_NUM;
+                deliverBuffered();
+            }
+
+            if (isInWindow(seqNum)) {
+                addToBuffer();
+                createACKPacket();
                 sendPacket();
             }
+            if (!gotLast) gotLast = ((int) eofFlag) == 1;
+            if (gotLast && dataToWrite.keySet().size() == 0)
+                break;
         }
 
     }
@@ -192,5 +200,21 @@ public class Receiver2b extends Thread {
         } catch (IOException e) {
             System.out.println("ERROR IN SOCKET SENDING");
         }
+    }
+
+    public boolean isInWindow(int number){
+        if (baseNum <= number)
+            return number < baseNum + windowSize;
+        else return number < ((baseNum + windowSize) % MAX_SEQ_NUM);
+    }
+    public void deliverBuffered(){
+        while (dataToWrite.containsKey(baseNum)){
+            dataByte = dataToWrite.get(baseNum);
+            writeData();
+            baseNum = (baseNum + 1) % MAX_SEQ_NUM;
+        }
+    }
+    public void addToBuffer() {
+        dataToWrite.put(seqNum, dataByte);
     }
 }

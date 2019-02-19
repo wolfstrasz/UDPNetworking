@@ -50,6 +50,7 @@ public class Sender2a extends Thread {
     private int transmissionTimeout;
     /* Timing vars */
     MyTimer timer;
+
     private void setup(String[] args) {
         /* args: <RemoteHost> <Port> <Filename> <TransmissionTimeout> <WindowSize>*/
         // parse window size;
@@ -310,7 +311,7 @@ public class Sender2a extends Thread {
     }
 
     // Own timer class:
-    public class MyTimer {
+    private class MyTimer {
         long startTime;
         long timeoutTime;
         public MyTimer (long timeoutTime){
