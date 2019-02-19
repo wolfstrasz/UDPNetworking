@@ -165,7 +165,8 @@ public class Sender2a extends Thread {
             while (isACK(baseNum)){
             //    System.out.println("Received ACK: " + baseNum);
 
-                packetsOut.remove(baseNum);
+                if(packetsOut.containsKey(baseNum)) // removes duplicates
+                    packetsOut.remove(baseNum);
 
                 baseNum = (baseNum + 1) % MAX_SEQ_NUM;
             //    System.out.println("EOF = " + ((int) eofFlag & 0xFF));
