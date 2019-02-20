@@ -123,8 +123,8 @@ public class Sender2b extends Thread {
 
 
         // Init other data
-        seqNum = 0;
-        baseNum = 0;
+        seqNum = 1;
+        baseNum = 1;
         ackData = new byte[HEADER_SIZE-1];
         MAX_SEQ_NUM = windowSize * 2;
         packetsOut = new HashMap<Integer, DatagramPacket>();
@@ -134,7 +134,7 @@ public class Sender2b extends Thread {
 
     public void run() {
         int num_resends = 0;
-        //System.out.println("Client Running");
+        System.out.println("Client Running");
 
         transmissionStart = System.currentTimeMillis();
         for (; packetsOut.size()< windowSize; ){
@@ -156,9 +156,12 @@ public class Sender2b extends Thread {
             }
 
             int ackN = getAck();
+            //System.out.println("Last Received ACK: " + ackN);
+
             if (packetsOut.containsKey(ackN)){
-                //    System.out.println("Received ACK: " + baseNum);
+                System.out.println("Acknowledge packet: " + ackN);
                 packetsOut.remove(ackN);
+                packetsOutTimers.remove(ackN);
 
 
                 if (((int) eofFlag & 0xFF) == 0) {
@@ -169,7 +172,7 @@ public class Sender2b extends Thread {
                             baseNum = (baseNum + 1) % MAX_SEQ_NUM;
                             packetsToAdd++;
                         }
-
+                    System.out.println("EOF not reached adding more packets: " + packetsToAdd);
                     while (packetsToAdd != 0 && ((int) eofFlag & 0xFF) == 0){
                         createPacket();
                         sendLastPacket();
@@ -276,8 +279,9 @@ public class Sender2b extends Thread {
 
         // create packet
         lastPacket = new DatagramPacket(combined, combined.length, address, port);
+        System.out.println("Created packet: " + seqNum + " : " + eofFlag);
         packetsOut.put(seqNum, lastPacket);
-        //System.out.println("Sending packet size == " + packetOut.getLength());
+    //    System.out.println("Creating packet size == " + lastPacket.getLength());
     }
 
 
@@ -285,8 +289,10 @@ public class Sender2b extends Thread {
         for (Integer i : packetsOutTimers.keySet()){
             MyTimer timer = packetsOutTimers.get(i);
             if (timer.isTimeout()){
+                System.out.println("Packet timer timeout: " + i);
                 try {
                     socketOut.send(packetsOut.get(i));
+                    timer.start();
                 } catch (IOException e){
                     System.out.println("ERROR IN SOCKET SENDING (resend packet)");
                 }
@@ -294,7 +300,7 @@ public class Sender2b extends Thread {
         }
     }
     private void sendLastPacket() {
-        // System.out.println("Sending packet: " + seqNum);
+         System.out.println("Sending packet: " + seqNum);
         MyTimer timer = new MyTimer(transmissionTimeout);
         timer.start();
         packetsOutTimers.put (seqNum, timer);

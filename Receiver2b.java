@@ -38,7 +38,7 @@ public class Receiver2b extends Thread {
         /* args: <RemoteHost> <Port> <Filename> <WindowSize>*/
         // parse window size;
         try  {
-            windowSize = Integer.parseInt(args[4]);
+            windowSize = Integer.parseInt(args[2]);
         } catch (NumberFormatException e) {
             System.out.println("Window size is not an Integer");
             System.exit(0);
@@ -87,33 +87,54 @@ public class Receiver2b extends Thread {
             System.exit(0);
         }
         packetIn = new DatagramPacket(packetData, packetData.length);
-        seqNum = 0;
+        seqNum = 1;
+        dataToWrite = new HashMap<Integer,byte[]>();
         //nextSeqNum = 0;
     }
 
     public void run() {
-        baseNum = 0;
+        baseNum = 1;
         boolean gotLast = false;
        // nextSeqNum = 0;
         MAX_SEQ_NUM = windowSize * 2;
-        while (true) {
 
+        //System.out.println("Running with MSN: " + MAX_SEQ_NUM);
+        while (true) {
+            System.out.println("Waiting to receivePacket... ");
             receivePacket();
             extractData();
+           System.out.println("Basenum: " + baseNum);
+            System.out.println("Received packet: " + seqNum + " : " + eofFlag);
             if (seqNum == baseNum){
                 writeData();
-                createACKPacket();
-                sendPacket();
+                //createACKPacket();
+                //sendPacket();
                 baseNum = (baseNum + 1 ) % MAX_SEQ_NUM;
                 deliverBuffered();
             }
 
             if (isInWindow(seqNum)) {
+                System.out.println("Buffering packet: " + seqNum + " (basenum = " + baseNum + " )");
                 addToBuffer();
                 createACKPacket();
+                System.out.println("Sending ack packet: " + seqNum);
                 sendPacket();
             }
-            if (!gotLast) gotLast = ((int) eofFlag) == 1;
+
+            if (!isInWindow(seqNum)) {
+                createACKPacket();
+                sendPacket();
+                System.out.println("Writing data and sending ack packet: " + seqNum);
+
+            }
+
+            System.out.println("DATA TO WRITE: " + dataToWrite.keySet().size());
+            for (Integer i: dataToWrite.keySet()){
+                System.out.print(":" + i);
+            }
+            System.out.println("");
+            //System.out.println("GotLast: " + gotLast + " && " + "dataToWrite.size: " + dataToWrite.keySet().size());
+            if (gotLast == false) gotLast = ((int) eofFlag & 0xFF) != 0;
             if (gotLast && dataToWrite.keySet().size() == 0)
                 break;
         }
@@ -204,15 +225,21 @@ public class Receiver2b extends Thread {
 
     public boolean isInWindow(int number){
         if (baseNum <= number)
-            return number < baseNum + windowSize;
-        else return number < ((baseNum + windowSize) % MAX_SEQ_NUM);
+            return (number - baseNum) < windowSize;
+        else return (MAX_SEQ_NUM - baseNum + number) < windowSize;
     }
     public void deliverBuffered(){
+        System.out.println("Start to deliverBuffered");
         while (dataToWrite.containsKey(baseNum)){
+            System.out.println("Delivered: " + baseNum);
             dataByte = dataToWrite.get(baseNum);
             writeData();
+            dataToWrite.remove(baseNum);
+            
             baseNum = (baseNum + 1) % MAX_SEQ_NUM;
         }
+        System.out.println("Finished deliverBuffered");
+
     }
     public void addToBuffer() {
         dataToWrite.put(seqNum, dataByte);
