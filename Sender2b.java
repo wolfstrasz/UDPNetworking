@@ -1,6 +1,9 @@
 /* Forename Surname MatriculationNumber */
 /* Boyan Yotov s1509922*/
 
+/* New references:
+    Java Create Own Timer: https://stackoverflow.com/questions/10820033/make-a-simple-timer-in-java
+ */
 
 import java.net.DatagramSocket;
 import java.net.DatagramPacket;
@@ -9,47 +12,50 @@ import java.net.*;
 import java.io.*;
 import java.util.*;
 import java.nio.ByteBuffer;
-//import java.util.concurrent.TimeUnit;
 
 public class Sender2b extends Thread {
     private static final int DATA_SIZE = 1024;
     private static final int HEADER_SIZE = 5;
-
+    private int MAX_SEQ_NUM = 65535;
 
     /* connection vars */
-    private DatagramSocket socketIn;
     private DatagramSocket socketOut;
+    private DatagramSocket socketIn;
     private InetAddress address;
     private int port;
 
     /* data vars */
-    private byte[] dataOut;
-    private byte[] ackData;
-    private int seqNum;
-    private int baseNum;
-    private byte eofFlag;
-    private Map<Integer, DatagramPacket> packetsOut;
-    private DatagramPacket lastPacket;
+    private Map<Integer, DatagramPacket> allPacketsOut = new HashMap<Integer, DatagramPacket>();
+    private DatagramPacket packetOut;
     private DatagramPacket packetIn;
+    private byte[] extractedData;
+    private byte[] ackData = new byte[HEADER_SIZE-1];
     private int windowSize;
-    private int MAX_SEQ_NUM = 65535;
+    private byte eofFlag;
+    private int baseNum;
+    private int seqNum;
 
     /* File vars */
+    private FileInputStream fin = null;
     private File file;
-    private int fileSize;
     private int fullReads;
     private int leftover;
-    private FileInputStream fin = null;
+
+    /* Timing vars */
+    private int timerTimeout;
+    private Map<Integer, MyTimer> allPacketsOutTimers = new HashMap<Integer, MyTimer>();
 
     /* Analysis vars */
     private long transmissionStart;
-    private int transmissionTimeout;
-    /* Timing vars */
-    private Map<Integer, MyTimer> packetsOutTimers;
 
+
+    // Main functionality methods
+    // ------------------------------------------------------------------
     private void setup(String[] args) {
-        /* args: <RemoteHost> <Port> <Filename> <TransmissionTimeout> <WindowSize>*/
-        // parse window size;
+        /* args: <RemoteHost> <Port> <Filename> <timerTimeout> <WindowSize>*/
+
+        // parse window size
+        // ------------------------------------------------------------------
         try  {
             windowSize = Integer.parseInt(args[4]);
         } catch (NumberFormatException e) {
@@ -57,32 +63,45 @@ public class Sender2b extends Thread {
             System.exit(0);
         }
 
-
         // parse transmission timeout
+        // ------------------------------------------------------------------
         try {
-            transmissionTimeout = Integer.parseInt(args[3]);
+            timerTimeout = Integer.parseInt(args[3]);
         } catch (NumberFormatException e) {
             System.out.println("Transmission timeout is not an Integer");
             System.exit(0);
         }
 
-        // Try to init file
+        // parse file name and open read stream
+        // ------------------------------------------------------------------
         file = new File(args[2]);
         if (!file.exists()) {
             System.out.println("File not found");
             System.exit(0);
         }
-        fileSize = (int)file.length();
-        fullReads = fileSize / DATA_SIZE;
-        leftover = fileSize - (fullReads * DATA_SIZE);
-        // Try to parse Port number
+        fullReads = (int)file.length() / DATA_SIZE;
+        leftover = (int)file.length() - (fullReads * DATA_SIZE);
+
+        try {
+            fin = new FileInputStream(file);
+        } catch (FileNotFoundException e) {
+            System.out.println("FILENOTFOUNDEXCEPTION");
+            System.exit(0);
+        }
+
+        // parse server port number
+        // ------------------------------------------------------------------
+
         try {
             this.port = Integer.parseInt(args[1]);
         } catch (NumberFormatException e) {
             System.out.println("Port is not an Integer");
             System.exit(0);
         }
-        // Try to get host
+
+        // parse host ip
+        // ------------------------------------------------------------------
+
         try {
             address = InetAddress.getByName(args[0]);
         } catch (UnknownHostException e) {
@@ -90,9 +109,13 @@ public class Sender2b extends Thread {
             System.exit(0);
         }
 
-        // initialise other components
+        // initialise sockets components
+        // ------------------------------------------------------------------
         try {
             socketIn = new DatagramSocket(port+1);
+            // packet timeout to be calculated by private timer
+            // otherwise it won't be able to receive or act upon data fast enough
+            socketIn.setSoTimeout(1);
         } catch (SocketException e) {
             System.out.println("SOCKET EXCEPTION");
             System.exit(0);
@@ -104,100 +127,88 @@ public class Sender2b extends Thread {
         } catch (SocketException e) {
             System.out.println("SOCKET EXCEPTION");
             System.exit(0);
-
         }
-        // set timeout
-        try {
-            socketIn.setSoTimeout(1); // switching timeout to be calculated by private timer otherwise through put is low
-        } catch (SocketException e) {
-            e.printStackTrace();
-        }
-
-        // Init file
-        try {
-            fin = new FileInputStream(file);
-        } catch (FileNotFoundException e) {
-            System.out.println("FILENOTFOUNDEXCEPTION");
-            System.exit(0);
-        }
-
-
-        // Init other data
-        seqNum = 1;
-        baseNum = 1;
-        ackData = new byte[HEADER_SIZE-1];
-        MAX_SEQ_NUM = windowSize * 2;
-        packetsOut = new HashMap<Integer, DatagramPacket>();
-        packetIn = new DatagramPacket(ackData, ackData.length);
-        packetsOutTimers = new HashMap<Integer, MyTimer>();
     }
 
     public void run() {
-        int num_resends = 0;
-        System.out.println("Client Running");
 
+        // other initialising
+        // ------------------------------------------------------------------
+        seqNum = 1;
+        baseNum = 1;
+        MAX_SEQ_NUM = windowSize * 2;
+        packetIn = new DatagramPacket(ackData, ackData.length);
         transmissionStart = System.currentTimeMillis();
-        for (; packetsOut.size()< windowSize; ){
-            createPacket();
-            sendLastPacket();
-            seqNum ++;
+        // System.out.println("Client Running");
 
+        // send base window of packets
+        // ------------------------------------------------------------------
+        for (; allPacketsOut.size()< windowSize; ){
+            packetOut = createPacket();
+            allPacketsOut.put(seqNum, packetOut);
+            sendPacket(packetOut);
+            addTimer(seqNum);
+            seqNum ++;
         }
-        while (true) {
-            // Try to receive a packet
+
+        while (!(((int) eofFlag & 0xFF) != 0 && allPacketsOut.size() == 0)) {
+            // receive an ACK packet
+            // ------------------------------------------------------------------
             try {
                 socketIn.receive(packetIn);
             } catch (SocketTimeoutException e) {
-                // if timeout for first packet
-                resendPackets();
+                // check timers timeout for all packets
+                resendTimeoutPackets();
             } catch (IOException e) {
                 System.out.println("ERROR: IO Exception at SocketIn receive packet");
                 System.exit(0);
             }
 
             int ackN = getAck();
-            //System.out.println("Last Received ACK: " + ackN);
+            // when we acknowledge packets move window and add packets
+            // ------------------------------------------------------------------
+            if (allPacketsOut.containsKey(ackN)){
+                // System.out.println("Acknowledge packet: " + ackN);
+                allPacketsOut.remove(ackN);
+                allPacketsOutTimers.remove(ackN);
 
-            if (packetsOut.containsKey(ackN)){
-                System.out.println("Acknowledge packet: " + ackN);
-                packetsOut.remove(ackN);
-                packetsOutTimers.remove(ackN);
-
-
+                // we should add more packets if we have not reached the end
+                // ------------------------------------------------------------------
                 if (((int) eofFlag & 0xFF) == 0) {
-                    // Check if we received BASE_NUM's ack
                     int packetsToAdd = 0;
+
+                    // find next non-ACKed packet and how many packets we have to add
+                    // ------------------------------------------------------------------
                     if (ackN == baseNum)
-                        while (!packetsOut.containsKey(baseNum)) {
+                        while (!allPacketsOut.containsKey(baseNum)) {
                             baseNum = (baseNum + 1) % MAX_SEQ_NUM;
                             packetsToAdd++;
                         }
-                    System.out.println("EOF not reached adding more packets: " + packetsToAdd);
+
+                    // System.out.println("EOF not reached adding more packets: " + packetsToAdd);
                     while (packetsToAdd != 0 && ((int) eofFlag & 0xFF) == 0){
-                        createPacket();
-                        sendLastPacket();
+                        packetOut = createPacket();
+                        allPacketsOut.put(seqNum, packetOut);
+                        sendPacket(packetOut);
+                        addTimer(seqNum);
                         seqNum = (seqNum + 1 ) % MAX_SEQ_NUM;
                         packetsToAdd --;
                     }
 
                 }
-                if ( ((int) eofFlag & 0xFF) != 0 && fullReads % MAX_SEQ_NUM != baseNum)
-                    break;
+// check why i need this
+//                if ( ((int) eofFlag & 0xFF) != 0 && fullReads % MAX_SEQ_NUM != baseNum)
+//                    break;
             }
-
-
-
-            // Check for finish
-            if (((int) eofFlag & 0xFF) != 0 && packetsOut.size() == 0)
-                break;
         }
     }
 
     private void analysis() {
         long transmissionEnd = System.currentTimeMillis();
         double time = (transmissionEnd - transmissionStart) * 0.001; // get seconds
-        double dataSize = fileSize / (double)1024; // in KBs
-        //System.out.println(retransmissions + " " + (int) (dataSize / time));
+        double dataSize = ((int)file.length()) / (double)1024; // in KBs
+
+        // print throughput
         System.out.println((int) (dataSize / time));
     }
 
@@ -220,7 +231,87 @@ public class Sender2b extends Thread {
         sender.close();
     }
 
+    // Packet sending methods
+    // ------------------------------------------------------------------
+    private void extractDataChunk() {
+        if (fullReads > 0) {
+            extractedData = new byte[DATA_SIZE];
+            try {
+                //noinspection ResultOfMethodCallIgnored
+                fin.read(extractedData);
+                fullReads--;
+                eofFlag = (byte) 0;
+            } catch (IOException e) {
+                System.out.println("ERROR: CANNOT EXTRACT FULL DATA CHUNK");
+                System.exit(0);
+                // return false;
+            }
+        } else {
+            extractedData = new byte[leftover];
+            try {
+                //noinspection ResultOfMethodCallIgnored
+                fin.read(extractedData);
+                eofFlag = (byte) 1;
+            } catch (IOException e) {
+                System.out.println("ERROR: CANNOT EXTRACT DATA CHUNK");
+                System.exit(0);
+                // return false;
+            }
+        }
+    }
+
+    private DatagramPacket createPacket() {
+        extractDataChunk();
+
+        ByteBuffer bb = ByteBuffer.allocate(HEADER_SIZE + extractedData.length);
+        bb.put((byte) 0); /// Offset
+        bb.put((byte) 0); /// Octet
+        bb.put(intToByteArray(seqNum)); /// Sequence Number
+        bb.put(eofFlag); /// EoF
+        bb.put(extractedData); /// Data
+
+        byte[] combined = bb.array();
+
+        // create packet
+        return new DatagramPacket(combined, combined.length, address, port);
+    }
+
+    private void resendTimeoutPackets(){
+        for (Integer i : allPacketsOutTimers.keySet()){
+            MyTimer timer = allPacketsOutTimers.get(i);
+            if (timer.isTimeout()){
+                System.out.println("Packet timer timeout: " + i);
+                try {
+                    socketOut.send(allPacketsOut.get(i));
+                    timer.start();
+                } catch (IOException e){
+                    System.out.println("ERROR IN SOCKET SENDING (resend packet)");
+                }
+            }
+        }
+    }
+
+    private void addTimer (int packetNumber){
+        MyTimer timer = new MyTimer(timerTimeout);
+        timer.start();
+        allPacketsOutTimers.put (packetNumber, timer);
+    }
+
+    private void sendPacket(DatagramPacket packet) {
+        try {
+            socketOut.send(packet);
+        } catch (IOException e) {
+            System.out.println("ERROR IN SOCKET SENDING");
+        }
+    }
+
     // UTILITIES:
+    // ------------------------------------------------------------------
+    private int getAck() {
+        //System.out.println("Receiving packet size == " + ackData.length);
+        return byteArrayToInt(Arrays.copyOfRange(ackData, 2, 4));
+    }
+
     private static byte[] intToByteArray(int value) {
         return new byte[] {
                 // (byte)(value >>> 24),
@@ -237,87 +328,8 @@ public class Sender2b extends Thread {
         return value;
     }
 
-    // PACKET SENDING
-    private void extractDataChunk() {
-        if (fullReads > 0) {
-            dataOut = new byte[DATA_SIZE];
-            try {
-                //noinspection ResultOfMethodCallIgnored
-                fin.read(dataOut);
-                fullReads--;
-                eofFlag = (byte) 0;
-            } catch (IOException e) {
-                System.out.println("ERROR: CANNOT EXTRACT FULL DATA CHUNK");
-                System.exit(0);
-                // return false;
-            }
-        } else {
-            dataOut = new byte[leftover];
-            try {
-                //noinspection ResultOfMethodCallIgnored
-                fin.read(dataOut);
-                eofFlag = (byte) 1;
-            } catch (IOException e) {
-                System.out.println("ERROR: CANNOT EXTRACT DATA CHUNK");
-                System.exit(0);
-                // return false;
-            }
-        }
-    }
-
-    private void createPacket() {
-        extractDataChunk();
-
-        ByteBuffer bb = ByteBuffer.allocate(HEADER_SIZE + dataOut.length);
-        bb.put((byte) 0); /// Offset
-        bb.put((byte) 0); /// Octet
-        bb.put(intToByteArray(seqNum)); /// Sequence Number
-        bb.put(eofFlag); /// EoF
-        bb.put(dataOut); /// Data
-
-        byte[] combined = bb.array();
-
-        // create packet
-        lastPacket = new DatagramPacket(combined, combined.length, address, port);
-        System.out.println("Created packet: " + seqNum + " : " + eofFlag);
-        packetsOut.put(seqNum, lastPacket);
-    //    System.out.println("Creating packet size == " + lastPacket.getLength());
-    }
-
-
-    private void resendPackets(){
-        for (Integer i : packetsOutTimers.keySet()){
-            MyTimer timer = packetsOutTimers.get(i);
-            if (timer.isTimeout()){
-                System.out.println("Packet timer timeout: " + i);
-                try {
-                    socketOut.send(packetsOut.get(i));
-                    timer.start();
-                } catch (IOException e){
-                    System.out.println("ERROR IN SOCKET SENDING (resend packet)");
-                }
-            }
-        }
-    }
-    private void sendLastPacket() {
-         System.out.println("Sending packet: " + seqNum);
-        MyTimer timer = new MyTimer(transmissionTimeout);
-        timer.start();
-        packetsOutTimers.put (seqNum, timer);
-        try {
-            socketOut.send(lastPacket);
-        } catch (IOException e) {
-            System.out.println("ERROR IN SOCKET SENDING");
-        }
-    }
-
-    // PACKET RECEIVING
-    private int getAck() {
-        //System.out.println("Receiving packet size == " + ackData.length);
-        return byteArrayToInt(Arrays.copyOfRange(ackData, 2, 4));
-    }
-
-    // UTIL TIMER
+    // Own timer class
+    // ------------------------------------------------------------------
     private class MyTimer {
         long startTime;
         long timeoutTime;

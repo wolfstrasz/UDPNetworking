@@ -2,6 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="f6ba4f28-ac28-45cb-a253-8610a173ff88" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Receiver2a.java" beforeDir="false" afterPath="$PROJECT_DIR$/Receiver2a.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Receiver2b.java" beforeDir="false" afterPath="$PROJECT_DIR$/Receiver2b.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Sender2a.java" beforeDir="false" afterPath="$PROJECT_DIR$/Sender2a.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Sender2b.java" beforeDir="false" afterPath="$PROJECT_DIR$/Sender2b.java" afterDir="false" />
@@ -23,22 +25,22 @@
       </usages-collector>
       <usages-collector id="statistics.file.extensions.open">
         <counts>
-          <entry key="java" value="12" />
+          <entry key="java" value="13" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.types.open">
         <counts>
-          <entry key="JAVA" value="12" />
+          <entry key="JAVA" value="13" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.extensions.edit">
         <counts>
-          <entry key="java" value="4794" />
+          <entry key="java" value="7069" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.types.edit">
         <counts>
-          <entry key="JAVA" value="4794" />
+          <entry key="JAVA" value="7069" />
         </counts>
       </usages-collector>
     </session>
@@ -48,24 +50,26 @@
   </component>
   <component name="FileEditorManager">
     <leaf>
-      <file pinned="false" current-in-tab="false">
+      <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/Sender2a.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="170">
-              <caret line="311" lean-forward="true" selection-start-line="311" selection-end-line="311" />
+            <state relative-caret-position="323">
+              <caret line="186" column="13" selection-start-line="186" selection-start-column="13" selection-end-line="186" selection-end-column="13" />
               <folding>
-                <element signature="e#0#9059#0" expanded="true" />
                 <element signature="imports" expanded="true" />
+                <element signature="e#838#863#0" expanded="true" />
                 <element signature="method#setup#0;class#Sender2a#0" />
                 <element signature="method#analysis#0;class#Sender2a#0" />
                 <element signature="method#close#0;class#Sender2a#0" />
                 <element signature="method#main#0;class#Sender2a#0" />
-                <element signature="method#intToByteArray#0;class#Sender2a#0" />
-                <element signature="method#byteArrayToInt#0;class#Sender2a#0" />
                 <element signature="method#extractDataChunk#0;class#Sender2a#0" />
                 <element signature="method#createPacket#0;class#Sender2a#0" />
                 <element signature="method#sendLastPacket#0;class#Sender2a#0" />
                 <element signature="method#sendAllPackets#0;class#Sender2a#0" />
+                <element signature="method#getACK#1;class#Sender2a#0" />
+                <element signature="method#intToByteArray#0;class#Sender2a#0" />
+                <element signature="method#byteArrayToInt#0;class#Sender2a#0" />
+                <element signature="class#MyTimer#0;class#Sender2a#0" />
                 <element signature="e#9202#9203#0" expanded="true" />
                 <element signature="e#9255#9256#0" expanded="true" />
                 <element signature="e#9171#9172#0" expanded="true" />
@@ -76,30 +80,27 @@
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/Receiver2a.java">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="357">
-              <caret line="26" column="27" lean-forward="true" selection-start-line="26" selection-start-column="27" selection-end-line="26" selection-end-column="27" />
-              <folding>
-                <element signature="e#0#5618#0" expanded="true" />
-                <element signature="imports" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/Sender2b.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-357">
-              <caret line="11" column="39" lean-forward="true" selection-start-line="11" selection-start-column="39" selection-end-line="11" selection-end-column="39" />
+            <state relative-caret-position="310">
+              <caret line="312" column="5" lean-forward="true" selection-start-line="312" selection-start-column="5" selection-end-line="312" selection-end-column="5" />
               <folding>
                 <element signature="imports" expanded="true" />
-                <element signature="method#analysis#0;class#Sender2a#0" />
-                <element signature="method#intToByteArray#0;class#Sender2a#0" />
-                <element signature="method#byteArrayToInt#0;class#Sender2a#0" />
-                <element signature="method#extractDataChunk#0;class#Sender2a#0" />
-                <element signature="method#createPacket#0;class#Sender2a#0" />
+                <element signature="e#818#843#0" expanded="true" />
+                <element signature="e#1369#1387#0" expanded="true" />
+                <element signature="method#setup#0;class#Sender2b#0" />
+                <element signature="method#analysis#0;class#Sender2b#0" />
+                <element signature="method#close#0;class#Sender2b#0" />
+                <element signature="method#main#0;class#Sender2b#0" />
+                <element signature="method#extractDataChunk#0;class#Sender2b#0" />
+                <element signature="method#createPacket#0;class#Sender2b#0" />
+                <element signature="method#resendPackets#0;class#Sender2b#0" />
+                <element signature="method#addTimer#0;class#Sender2b#0" />
+                <element signature="method#&lt;unnamed&gt;#0;class#Sender2b#0" />
+                <element signature="method#getAck#0;class#Sender2b#0" />
+                <element signature="method#intToByteArray#0;class#Sender2b#0" />
+                <element signature="method#byteArrayToInt#0;class#Sender2b#0" />
+                <element signature="class#MyTimer#0;class#Sender2b#0" />
                 <element signature="e#8015#8016#0" expanded="true" />
                 <element signature="e#8069#8070#0" expanded="true" />
                 <element signature="e#8098#8099#0" expanded="true" />
@@ -109,23 +110,49 @@
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/Receiver2b.java">
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/Receiver2a.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="352">
-              <caret line="115" column="57" lean-forward="true" selection-start-line="115" selection-start-column="57" selection-end-line="115" selection-end-column="57" />
+            <state relative-caret-position="237">
+              <caret line="148" column="29" lean-forward="true" selection-start-line="148" selection-start-column="29" selection-end-line="148" selection-end-column="29" />
               <folding>
-                <element signature="e#0#5377#0" expanded="true" />
+                <element signature="e#0#5618#0" expanded="true" />
                 <element signature="imports" expanded="true" />
+                <element signature="method#setup#0;class#Receiver2a#0" />
+                <element signature="method#run#0;class#Receiver2a#0" />
                 <element signature="method#close#0;class#Receiver2a#0" />
                 <element signature="method#main#0;class#Receiver2a#0" />
-                <element signature="method#intToByteArray#0;class#Receiver2a#0" />
-                <element signature="method#byteArrayToInt#0;class#Receiver2a#0" />
                 <element signature="method#receivePacket#0;class#Receiver2a#0" />
+                <element signature="method#extractData#0;class#Receiver2a#0" />
                 <element signature="method#writeData#0;class#Receiver2a#0" />
                 <element signature="method#createACKPacket#0;class#Receiver2a#0" />
-                <element signature="e#6455#6456#0" expanded="true" />
-                <element signature="e#6478#6479#0" expanded="true" />
+                <element signature="method#sendPacket#0;class#Receiver2a#0" />
+                <element signature="method#intToByteArray#0;class#Receiver2a#0" />
+                <element signature="method#byteArrayToInt#0;class#Receiver2a#0" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/Receiver2b.java">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="115">
+              <caret line="13" column="45" lean-forward="true" selection-start-line="13" selection-start-column="45" selection-end-line="13" selection-end-column="45" />
+              <folding>
+                <element signature="imports" expanded="true" />
+                <element signature="method#setup#0;class#Receiver2b#0" />
+                <element signature="method#run#0;class#Receiver2b#0" />
+                <element signature="method#close#0;class#Receiver2b#0" />
+                <element signature="method#main#0;class#Receiver2b#0" />
+                <element signature="method#receivePacket#0;class#Receiver2b#0" />
+                <element signature="method#extractData#0;class#Receiver2b#0" />
+                <element signature="method#writeData#0;class#Receiver2b#0" />
+                <element signature="method#isInWindow#0;class#Receiver2b#0" />
+                <element signature="method#deliverBuffered#0;class#Receiver2b#0" />
+                <element signature="method#sendPacket#0;class#Receiver2b#0" />
+                <element signature="method#intToByteArray#0;class#Receiver2b#0" />
+                <element signature="method#byteArrayToInt#0;class#Receiver2b#0" />
               </folding>
             </state>
           </provider>
@@ -144,9 +171,43 @@
     <findStrings>
       <find>Sender1b</find>
       <find>Sender</find>
+      <find>isACK</find>
+      <find>num</find>
+      <find>packetInData</find>
+      <find>lastPacket</find>
+      <find>sendLastPacket</find>
+      <find>packetsOutTimers</find>
+      <find>packetsOut</find>
+      <find>dataOut</find>
+      <find>transmissionTimeout</find>
+      <find>resendPackets</find>
+      <find>dataByte</find>
+      <find>sendPacket</find>
+      <find>bufferedData</find>
+      <find>packetData</find>
+      <find>gotLast</find>
+      <find>dataToWrite</find>
+      <find>createPacket</find>
+      <find>createACKPacket</find>
     </findStrings>
     <replaceStrings>
       <replace>dataOut</replace>
+      <replace>sendPacket(packetOut)</replace>
+      <replace>resendPackets</replace>
+      <replace>timerTimeouts</replace>
+      <replace>getACK</replace>
+      <replace>packetInData</replace>
+      <replace>packetOut</replace>
+      <replace>allPacketsOutTimers</replace>
+      <replace>all</replace>
+      <replace>allPacketsOut</replace>
+      <replace>extractedData</replace>
+      <replace>data</replace>
+      <replace>bufferedData</replace>
+      <replace>dataToWrite</replace>
+      <replace>timerTimeout</replace>
+      <replace>gotLastPacket</replace>
+      <replace>resendTimeoutPackets</replace>
     </replaceStrings>
   </component>
   <component name="Git.Settings">
@@ -157,9 +218,9 @@
       <list>
         <option value="$PROJECT_DIR$/Sender.java" />
         <option value="$PROJECT_DIR$/Receiver1a.java" />
-        <option value="$PROJECT_DIR$/Receiver2a.java" />
         <option value="$PROJECT_DIR$/Sender2a.java" />
         <option value="$PROJECT_DIR$/Sender2b.java" />
+        <option value="$PROJECT_DIR$/Receiver2a.java" />
         <option value="$PROJECT_DIR$/Receiver2b.java" />
       </list>
     </option>
@@ -191,7 +252,7 @@
     </panes>
   </component>
   <component name="PropertiesComponent">
-    <property name="com.android.tools.idea.instantapp.provision.ProvisionBeforeRunTaskProvider.myTimeStamp" value="1550602872011" />
+    <property name="com.android.tools.idea.instantapp.provision.ProvisionBeforeRunTaskProvider.myTimeStamp" value="1550765218971" />
   </component>
   <component name="RunDashboard">
     <option name="ruleStates">
@@ -252,18 +313,6 @@
   <component name="VcsContentAnnotationSettings">
     <option name="myLimit" value="2678400000" />
   </component>
-  <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/Receiver2b.java</url>
-          <line>37</line>
-          <properties />
-          <option name="timeStamp" value="24" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
-  </component>
   <component name="editorHistoryManager">
     <entry file="file://$PROJECT_DIR$/Sender.java">
       <provider selected="true" editor-type-id="text-editor">
@@ -320,42 +369,71 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/Sender2a.java">
+    <entry file="file://$PROJECT_DIR$/Receiver2b.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="170">
-          <caret line="311" lean-forward="true" selection-start-line="311" selection-end-line="311" />
+        <state relative-caret-position="115">
+          <caret line="13" column="45" lean-forward="true" selection-start-line="13" selection-start-column="45" selection-end-line="13" selection-end-column="45" />
           <folding>
-            <element signature="e#0#9059#0" expanded="true" />
             <element signature="imports" expanded="true" />
-            <element signature="method#setup#0;class#Sender2a#0" />
-            <element signature="method#analysis#0;class#Sender2a#0" />
-            <element signature="method#close#0;class#Sender2a#0" />
-            <element signature="method#main#0;class#Sender2a#0" />
-            <element signature="method#intToByteArray#0;class#Sender2a#0" />
-            <element signature="method#byteArrayToInt#0;class#Sender2a#0" />
-            <element signature="method#extractDataChunk#0;class#Sender2a#0" />
-            <element signature="method#createPacket#0;class#Sender2a#0" />
-            <element signature="method#sendLastPacket#0;class#Sender2a#0" />
-            <element signature="method#sendAllPackets#0;class#Sender2a#0" />
-            <element signature="e#9202#9203#0" expanded="true" />
-            <element signature="e#9255#9256#0" expanded="true" />
-            <element signature="e#9171#9172#0" expanded="true" />
-            <element signature="e#9212#9213#0" expanded="true" />
+            <element signature="method#setup#0;class#Receiver2b#0" />
+            <element signature="method#run#0;class#Receiver2b#0" />
+            <element signature="method#close#0;class#Receiver2b#0" />
+            <element signature="method#main#0;class#Receiver2b#0" />
+            <element signature="method#receivePacket#0;class#Receiver2b#0" />
+            <element signature="method#extractData#0;class#Receiver2b#0" />
+            <element signature="method#writeData#0;class#Receiver2b#0" />
+            <element signature="method#isInWindow#0;class#Receiver2b#0" />
+            <element signature="method#deliverBuffered#0;class#Receiver2b#0" />
+            <element signature="method#sendPacket#0;class#Receiver2b#0" />
+            <element signature="method#intToByteArray#0;class#Receiver2b#0" />
+            <element signature="method#byteArrayToInt#0;class#Receiver2b#0" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/Receiver2a.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="237">
+          <caret line="148" column="29" lean-forward="true" selection-start-line="148" selection-start-column="29" selection-end-line="148" selection-end-column="29" />
+          <folding>
+            <element signature="e#0#5618#0" expanded="true" />
+            <element signature="imports" expanded="true" />
+            <element signature="method#setup#0;class#Receiver2a#0" />
+            <element signature="method#run#0;class#Receiver2a#0" />
+            <element signature="method#close#0;class#Receiver2a#0" />
+            <element signature="method#main#0;class#Receiver2a#0" />
+            <element signature="method#receivePacket#0;class#Receiver2a#0" />
+            <element signature="method#extractData#0;class#Receiver2a#0" />
+            <element signature="method#writeData#0;class#Receiver2a#0" />
+            <element signature="method#createACKPacket#0;class#Receiver2a#0" />
+            <element signature="method#sendPacket#0;class#Receiver2a#0" />
+            <element signature="method#intToByteArray#0;class#Receiver2a#0" />
+            <element signature="method#byteArrayToInt#0;class#Receiver2a#0" />
           </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/Sender2b.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-357">
-          <caret line="11" column="39" lean-forward="true" selection-start-line="11" selection-start-column="39" selection-end-line="11" selection-end-column="39" />
+        <state relative-caret-position="310">
+          <caret line="312" column="5" lean-forward="true" selection-start-line="312" selection-start-column="5" selection-end-line="312" selection-end-column="5" />
           <folding>
             <element signature="imports" expanded="true" />
-            <element signature="method#analysis#0;class#Sender2a#0" />
-            <element signature="method#intToByteArray#0;class#Sender2a#0" />
-            <element signature="method#byteArrayToInt#0;class#Sender2a#0" />
-            <element signature="method#extractDataChunk#0;class#Sender2a#0" />
-            <element signature="method#createPacket#0;class#Sender2a#0" />
+            <element signature="e#818#843#0" expanded="true" />
+            <element signature="e#1369#1387#0" expanded="true" />
+            <element signature="method#setup#0;class#Sender2b#0" />
+            <element signature="method#analysis#0;class#Sender2b#0" />
+            <element signature="method#close#0;class#Sender2b#0" />
+            <element signature="method#main#0;class#Sender2b#0" />
+            <element signature="method#extractDataChunk#0;class#Sender2b#0" />
+            <element signature="method#createPacket#0;class#Sender2b#0" />
+            <element signature="method#resendPackets#0;class#Sender2b#0" />
+            <element signature="method#addTimer#0;class#Sender2b#0" />
+            <element signature="method#&lt;unnamed&gt;#0;class#Sender2b#0" />
+            <element signature="method#getAck#0;class#Sender2b#0" />
+            <element signature="method#intToByteArray#0;class#Sender2b#0" />
+            <element signature="method#byteArrayToInt#0;class#Sender2b#0" />
+            <element signature="class#MyTimer#0;class#Sender2b#0" />
             <element signature="e#8015#8016#0" expanded="true" />
             <element signature="e#8069#8070#0" expanded="true" />
             <element signature="e#8098#8099#0" expanded="true" />
@@ -364,33 +442,29 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/Receiver2a.java">
+    <entry file="file://$PROJECT_DIR$/Sender2a.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="357">
-          <caret line="26" column="27" lean-forward="true" selection-start-line="26" selection-start-column="27" selection-end-line="26" selection-end-column="27" />
+        <state relative-caret-position="323">
+          <caret line="186" column="13" selection-start-line="186" selection-start-column="13" selection-end-line="186" selection-end-column="13" />
           <folding>
-            <element signature="e#0#5618#0" expanded="true" />
             <element signature="imports" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/Receiver2b.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="352">
-          <caret line="115" column="57" lean-forward="true" selection-start-line="115" selection-start-column="57" selection-end-line="115" selection-end-column="57" />
-          <folding>
-            <element signature="e#0#5377#0" expanded="true" />
-            <element signature="imports" expanded="true" />
-            <element signature="method#close#0;class#Receiver2a#0" />
-            <element signature="method#main#0;class#Receiver2a#0" />
-            <element signature="method#intToByteArray#0;class#Receiver2a#0" />
-            <element signature="method#byteArrayToInt#0;class#Receiver2a#0" />
-            <element signature="method#receivePacket#0;class#Receiver2a#0" />
-            <element signature="method#writeData#0;class#Receiver2a#0" />
-            <element signature="method#createACKPacket#0;class#Receiver2a#0" />
-            <element signature="e#6455#6456#0" expanded="true" />
-            <element signature="e#6478#6479#0" expanded="true" />
+            <element signature="e#838#863#0" expanded="true" />
+            <element signature="method#setup#0;class#Sender2a#0" />
+            <element signature="method#analysis#0;class#Sender2a#0" />
+            <element signature="method#close#0;class#Sender2a#0" />
+            <element signature="method#main#0;class#Sender2a#0" />
+            <element signature="method#extractDataChunk#0;class#Sender2a#0" />
+            <element signature="method#createPacket#0;class#Sender2a#0" />
+            <element signature="method#sendLastPacket#0;class#Sender2a#0" />
+            <element signature="method#sendAllPackets#0;class#Sender2a#0" />
+            <element signature="method#getACK#1;class#Sender2a#0" />
+            <element signature="method#intToByteArray#0;class#Sender2a#0" />
+            <element signature="method#byteArrayToInt#0;class#Sender2a#0" />
+            <element signature="class#MyTimer#0;class#Sender2a#0" />
+            <element signature="e#9202#9203#0" expanded="true" />
+            <element signature="e#9255#9256#0" expanded="true" />
+            <element signature="e#9171#9172#0" expanded="true" />
+            <element signature="e#9212#9213#0" expanded="true" />
           </folding>
         </state>
       </provider>

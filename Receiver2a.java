@@ -1,13 +1,13 @@
 /* Forename Surname MatriculationNumber */
 /* Boyan Yotov s1509922*/
 
+import javax.xml.crypto.Data;
 import java.net.DatagramSocket;
 import java.util.Arrays;
 import java.net.DatagramPacket;
 import java.nio.ByteBuffer;
 import java.net.*;
 import java.io.*;
-import java.util.*;
 
 public class Receiver2a extends Thread {
     private static final int DATA_SIZE = 1024;
@@ -17,24 +17,37 @@ public class Receiver2a extends Thread {
     /* connection vars */
     private DatagramSocket socketIn;
     private DatagramSocket socketOut;
-    private int port;
     private InetAddress address;
+    private int port;
+
     /* File vars */
     private FileOutputStream fout = null;
 
     /* Data vars */
-    private int seqNum;
-    private int nextSeqNum;
-    private byte eofFlag;
-    private byte num[];
-    private byte[] packetData = new byte[DATA_SIZE + HEADER_SIZE];
-    private byte[] dataByte;
-    private DatagramPacket packetIn;
+    private byte[] packetInData = new byte[DATA_SIZE + HEADER_SIZE];
+    private byte[] dataToWrite;
     private DatagramPacket packetOut;
+    private DatagramPacket packetIn;
+    private int nextSeqNum;
+    private int seqNum;
+    private byte eofFlag;
 
+    // Main functionality methods
+    // ------------------------------------------------------------------
     private void setup(String[] args) {
         /* args: <RemoteHost> <Port> <Filename> */
-        // Try to parse Port number
+
+        // get localhost IP
+        // ------------------------------------------------------------------
+        try {
+            address = InetAddress.getByName("localhost");
+        } catch (UnknownHostException e) {
+            System.out.println("UNKNOWN HOST EXCEPTION");
+            System.exit(0);
+        }
+
+        // parse port number
+        // ------------------------------------------------------------------
         try {
             this.port = Integer.parseInt(args[0]);
         } catch (NumberFormatException e) {
@@ -42,7 +55,8 @@ public class Receiver2a extends Thread {
             System.exit(0);
         }
 
-        // initialise other components
+        // initialise sockets components
+        // ------------------------------------------------------------------
         try {
             socketIn = new DatagramSocket(port);
         } catch (SocketException e) {
@@ -57,33 +71,18 @@ public class Receiver2a extends Thread {
             System.exit(0);
         }
 
-        // initfile
+        // initialise file write
+        // ------------------------------------------------------------------
         try {
             fout = new FileOutputStream(args[1], false);
         } catch (FileNotFoundException e) {
-            // throw e;
-            // } catch (IOException e) {
-            //     // throw e;
         }
-
-        dataByte = new byte[DATA_SIZE];
-        packetData = new byte[HEADER_SIZE + DATA_SIZE];
-        eofFlag = (byte) 0;
-
-        try {
-            address = InetAddress.getByName("localhost");
-        } catch (UnknownHostException e) {
-            System.out.println("UNKNOWN HOST EXCEPTION");
-            System.exit(0);
-        }
-        packetIn = new DatagramPacket(packetData, packetData.length);
-        seqNum = 0;
-        nextSeqNum = 0;
     }
 
     public void run() {
+        packetIn = new DatagramPacket(packetInData, packetInData.length);
         //System.out.println("Server Running");
-        while (true) {
+        while (((int) eofFlag) == 0) {
 
             receivePacket();
             extractData();
@@ -91,15 +90,12 @@ public class Receiver2a extends Thread {
             if (seqNum == nextSeqNum) {
                 //System.out.println("Writing and sending ACK");
                 writeData();
-                createACKPacket();
-                sendPacket();
-                nextSeqNum++;
-                // only stop working when  seqNum == nextSeqNum and this is the last packet
-                if (((int) eofFlag) == 1)
-                    break;
+                packetOut = createACKPacket();
+                sendPacket(packetOut);
+                nextSeqNum = (nextSeqNum + 1) % MAX_SEQ_NUM;
             } else {
                 //System.out.println("Sending old ACK packet");
-                sendPacket();
+                sendPacket(packetOut);
             }
         }
 
@@ -122,7 +118,59 @@ public class Receiver2a extends Thread {
         receiver.close();
     }
 
+
+    // packet receiving methods
+    // ------------------------------------------------------------------
+    private void receivePacket() {
+        try {
+            socketIn.receive(packetIn);
+            // System.out.println("got packet");
+        } catch (IOException e) {
+            System.out.println("ERROR: CANNOT RECEIVE PACKET");
+        }
+    }
+
+    private void extractData() {
+        seqNum = byteArrayToInt(Arrays.copyOfRange(packetInData, 2, 4));
+        eofFlag = packetInData[4];
+        dataToWrite = new byte[packetIn.getLength() - HEADER_SIZE];
+        dataToWrite = Arrays.copyOfRange(packetInData, HEADER_SIZE, packetIn.getLength());
+        //System.out.println("Receiving packet size == " + dataToWrite.length);
+    }
+
+    private void writeData() {
+        try {
+            fout.write(dataToWrite);
+        } catch (IOException e) {
+            System.out.println("ERROR IN Writing to file");
+        }
+    }
+
+    // packet sending methods
+    // ------------------------------------------------------------------
+    private DatagramPacket createACKPacket() {
+        ByteBuffer bb = ByteBuffer.allocate(HEADER_SIZE - 1);
+        bb.put((byte) 0); /// Offset
+        bb.put((byte) 0); /// Octet
+        bb.put(intToByteArray(seqNum)); /// Sequence Number
+        byte[] combined = bb.array();
+
+        // create packet
+        return new DatagramPacket(combined, combined.length, address, port + 1);
+        //System.out.println("Sending ACK packet size == " + packetOut.getLength());
+    }
+
+    private void sendPacket(DatagramPacket packet) {
+        // System.out.println("Sending packet: " + seqNum);
+        try {
+            socketOut.send(packet);
+        } catch (IOException e) {
+            System.out.println("ERROR IN SOCKET SENDING");
+        }
+    }
+
     // UTILITIES
+    // ------------------------------------------------------------------
     private static byte[] intToByteArray(int value) {
         return new byte[]{
                 // (byte)(value >>> 24),
@@ -139,51 +187,4 @@ public class Receiver2a extends Thread {
         return value;
     }
 
-    // PACKET RECEIVING
-    public void receivePacket() {
-        try {
-            socketIn.receive(packetIn);
-            // System.out.println("got packet");
-        } catch (IOException e) {
-            System.out.println("ERROR: CANNOT RECEIVE PACKET");
-        }
-    }
-
-    public void extractData() {
-        seqNum = byteArrayToInt(Arrays.copyOfRange(packetData, 2, 4));
-        eofFlag = packetData[4];
-        dataByte = new byte[packetIn.getLength() - HEADER_SIZE];
-        dataByte = Arrays.copyOfRange(packetData, HEADER_SIZE, packetIn.getLength());
-        //System.out.println("Receiving packet size == " + dataByte.length);
-    }
-
-    public void writeData() {
-        try {
-            fout.write(dataByte);
-        } catch (IOException e) {
-            System.out.println("ERROR IN Writing to file");
-        }
-    }
-
-    // PACKET SENDING
-    public void createACKPacket() {
-        ByteBuffer bb = ByteBuffer.allocate(HEADER_SIZE - 1);
-        bb.put((byte) 0); /// Offset
-        bb.put((byte) 0); /// Octet
-        bb.put(intToByteArray(seqNum)); /// Sequence Number
-        byte[] combined = bb.array();
-
-        // create packet
-        packetOut = new DatagramPacket(combined, combined.length, address, port + 1);
-        //System.out.println("Sending ACK packet size == " + packetOut.getLength());
-    }
-
-    public void sendPacket() {
-        // System.out.println("Sending packet: " + seqNum);
-        try {
-            socketOut.send(packetOut);
-        } catch (IOException e) {
-            System.out.println("ERROR IN SOCKET SENDING");
-        }
-    }
 }
