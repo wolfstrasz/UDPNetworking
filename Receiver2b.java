@@ -45,7 +45,7 @@ public class Receiver2b extends Thread {
         try {
             address = InetAddress.getByName("localhost");
         } catch (UnknownHostException e) {
-            System.out.println("UNKNOWN HOST EXCEPTION");
+            System.out.println("ERROR: Unknown host at getting localhost ip");
             System.exit(0);
         }
 
@@ -54,7 +54,7 @@ public class Receiver2b extends Thread {
         try  {
             windowSize = Integer.parseInt(args[2]);
         } catch (NumberFormatException e) {
-            System.out.println("Window size is not an Integer");
+            System.out.println("ERROR: Window size is not an Integer");
             System.exit(0);
         }
 
@@ -63,7 +63,7 @@ public class Receiver2b extends Thread {
         try {
             this.port = Integer.parseInt(args[0]);
         } catch (NumberFormatException e) {
-            System.out.println("Port is not an Integer");
+            System.out.println("ERROR: Parsed port is not an Integer");
             System.exit(0);
         }
 
@@ -72,14 +72,14 @@ public class Receiver2b extends Thread {
         try {
             socketIn = new DatagramSocket(port);
         } catch (SocketException e) {
-            System.out.println("SOCKET EXCEPTION");
+            System.out.println("ERROR: SOCKET EXCEPTION at opening socketIn");
             System.exit(0);
         }
 
         try {
             socketOut = new DatagramSocket();
         } catch (SocketException e) {
-            System.out.println("SOCKET EXCEPTION");
+            System.out.println("ERROR: SOCKET EXCEPTION at opening socketOut");
             System.exit(0);
         }
 
@@ -98,14 +98,17 @@ public class Receiver2b extends Thread {
         MAX_SEQ_NUM = windowSize * 2;
         packetIn = new DatagramPacket(packetData, packetData.length);
 
-        //System.out.println("Running with MSN: " + MAX_SEQ_NUM);
+//        System.out.println("Running with MSN: " + MAX_SEQ_NUM);
         while (!(gotLastPacket && bufferedData.keySet().size() == 0)) {
 //            System.out.println("Waiting to receivePacket... ");
+//            System.out.println("Window = " + baseNum + " : " + ((baseNum + windowSize) % MAX_SEQ_NUM));
             receivePacket();
             extractData();
 //            System.out.println("Basenum: " + baseNum);
 //            System.out.println("Received packet: " + seqNum + " : " + eofFlag);
             if (seqNum == baseNum){
+
+//                System.out.println("Writing data");
                 writeData();
                 //createACKPacket();
                 //sendPacket();
@@ -123,15 +126,15 @@ public class Receiver2b extends Thread {
             } else {
                 packetOut = createACKPacket();
                 sendPacket(packetOut);
-//                System.out.println("Writing data and sending ack packet: " + seqNum);
+//                System.out.println("Sending ack packet: " + seqNum);
             }
 
-//            System.out.println("DATA TO WRITE: " + bufferedData.keySet().size());
-//            for (Integer i: bufferedData.keySet()){
-//                System.out.print(":" + i);
-//            }
-//            System.out.println("");
-//            System.out.println("gotLastPacket: " + gotLastPacket + " && " + "bufferedData.size: " + bufferedData.keySet().size());
+//           System.out.println("DATA TO WRITE: " + bufferedData.keySet().size());
+//           for (Integer i: bufferedData.keySet()){
+//               System.out.print(":" + i);
+//           }
+//           System.out.println("");
+        //    System.out.println("gotLastPacket: " + gotLastPacket + " && " + "bufferedData.size: " + bufferedData.keySet().size());
             if (((int) eofFlag & 0xFF) != 0) gotLastPacket =  true;
         }
 
@@ -159,7 +162,6 @@ public class Receiver2b extends Thread {
     private void receivePacket() {
         try {
             socketIn.receive(packetIn);
-            // System.out.println("got packet");
         } catch (IOException e) {
             System.out.println("ERROR: CANNOT RECEIVE PACKET");
         }
@@ -170,7 +172,6 @@ public class Receiver2b extends Thread {
         eofFlag = packetData[4];
         dataToWrite = new byte[packetIn.getLength() - HEADER_SIZE];
         dataToWrite = Arrays.copyOfRange(packetData, HEADER_SIZE, packetIn.getLength());
-//        System.out.println("Receiving packet size == " + dataToWrite.length);
     }
 
     private void writeData() {
@@ -188,16 +189,16 @@ public class Receiver2b extends Thread {
     }
 
     private void deliverBuffered(){
-//        System.out.println("Start to deliverBuffered");
+     //  System.out.println("Start to deliverBuffered");
         while (bufferedData.containsKey(baseNum)){
-            System.out.println("Delivered: " + baseNum);
+            // System.out.println("Delivered: " + baseNum);
             dataToWrite = bufferedData.get(baseNum);
             writeData();
             bufferedData.remove(baseNum);
 
             baseNum = (baseNum + 1) % MAX_SEQ_NUM;
         }
-//        System.out.println("Finished deliverBuffered");
+    //    System.out.println("Finished deliverBuffered");
     }
 
     // packet sending methods
@@ -211,11 +212,9 @@ public class Receiver2b extends Thread {
 
         // create packet
         return new DatagramPacket(combined, combined.length, address, port + 1);
-//        System.out.println("Sending ACK packet size == " + packetOut.getLength());
     }
 
     private void sendPacket(DatagramPacket packet) {
-//        System.out.println("Sending packet: " + seqNum);
         try {
             socketOut.send(packet);
         } catch (IOException e) {

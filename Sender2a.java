@@ -48,6 +48,7 @@ public class Sender2a extends Thread {
 
     /* Analysis vars */
     private long transmissionStart;
+    private long transmissionEnd = 0;
 
     // Main functionality methods
     // ------------------------------------------------------------------
@@ -131,10 +132,10 @@ public class Sender2a extends Thread {
     }
 
     public void run() {
-        seqNum = 0;
-        baseNum = 0;
+        seqNum = 1;
+        baseNum = 1;
         packetIn = new DatagramPacket(ackData, ackData.length);
-        //System.out.println("Client Running");
+        // System.out.println("Client Running");
         transmissionStart = System.currentTimeMillis();
         timer = new MyTimer(timerTimeout);
         timer.start();
@@ -158,7 +159,8 @@ public class Sender2a extends Thread {
                     resendPackets();
                     timer.start();
                     num_resends++;
-                    if (num_resends > 10) break;
+                    if (num_resends > 10) transmissionEnd = System.currentTimeMillis();
+                    if (num_resends > 50) break;
                 }
             } catch (IOException e) {
                 System.out.println("ERROR: IO Exception at SocketIn receive packet");
@@ -189,7 +191,7 @@ public class Sender2a extends Thread {
     }
 
     private void analysis() {
-        long transmissionEnd = System.currentTimeMillis();
+        transmissionEnd = transmissionEnd == 0 ? System.currentTimeMillis() : transmissionEnd;
         double time = (transmissionEnd - transmissionStart) * 0.001; // get seconds
         double dataSize = ((int)file.length()) / (double)1024; // in KBs
 
@@ -270,15 +272,16 @@ public class Sender2a extends Thread {
     }
 
     private void resendPackets() {
-    //    System.out.println("resendPackets:");
+        // System.out.println("resendPackets:");
         for (int i = baseNum; i < baseNum + allPacketsOut.size() ; i++){
-        //   System.out.println("Packet: " + i);
+        //    System.out.print(i + ",");
             try {
                 socketOut.send(allPacketsOut.get(i));
             } catch (IOException e) {
                 System.out.println("ERROR IN SOCKET SENDING");
             }
         }
+        // System.out.println("");
     }
 
     // UTILITIES

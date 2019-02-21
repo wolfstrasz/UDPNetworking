@@ -139,7 +139,7 @@ public class Sender2b extends Thread {
         MAX_SEQ_NUM = windowSize * 2;
         packetIn = new DatagramPacket(ackData, ackData.length);
         transmissionStart = System.currentTimeMillis();
-        // System.out.println("Client Running");
+    //     System.out.println("Client Running");
 
         // send base window of packets
         // ------------------------------------------------------------------
@@ -148,16 +148,19 @@ public class Sender2b extends Thread {
             allPacketsOut.put(seqNum, packetOut);
             sendPacket(packetOut);
             addTimer(seqNum);
+    //        System.out.println("Sending packet: " + seqNum);
             seqNum ++;
         }
 
-        while (!(((int) eofFlag & 0xFF) != 0 && allPacketsOut.size() == 0)) {
+        while ( (((int) eofFlag & 0xFF) == 0 ) || allPacketsOut.size() != 0) {
+            //System.out.println("new iter");
             // receive an ACK packet
             // ------------------------------------------------------------------
             try {
                 socketIn.receive(packetIn);
             } catch (SocketTimeoutException e) {
                 // check timers timeout for all packets
+            //    System.out.println("Resending:");
                 resendTimeoutPackets();
             } catch (IOException e) {
                 System.out.println("ERROR: IO Exception at SocketIn receive packet");
@@ -168,39 +171,30 @@ public class Sender2b extends Thread {
             // when we acknowledge packets move window and add packets
             // ------------------------------------------------------------------
             if (allPacketsOut.containsKey(ackN)){
-                // System.out.println("Acknowledge packet: " + ackN);
+    //            System.out.println("Acknowledge packet: " + ackN);
                 allPacketsOut.remove(ackN);
                 allPacketsOutTimers.remove(ackN);
+        //        System.out.println("EOF: " + eofFlag + " || packetsOut size = " + allPacketsOut.size());
 
+                while (!(allPacketsOut.size() == 0) && allPacketsOut.get(baseNum) == null)
+                    baseNum = ( baseNum + 1 ) % MAX_SEQ_NUM;
+                if (allPacketsOut.size() == 0 ) baseNum = (baseNum + windowSize )% MAX_SEQ_NUM;
+
+        //        System.out.println("Window = " + baseNum + " : " + ((baseNum + windowSize) % MAX_SEQ_NUM));
                 // we should add more packets if we have not reached the end
                 // ------------------------------------------------------------------
-                if (((int) eofFlag & 0xFF) == 0) {
-                    int packetsToAdd = 0;
-
-                    // find next non-ACKed packet and how many packets we have to add
-                    // ------------------------------------------------------------------
-                    if (ackN == baseNum)
-                        while (!allPacketsOut.containsKey(baseNum)) {
-                            baseNum = (baseNum + 1) % MAX_SEQ_NUM;
-                            packetsToAdd++;
-                        }
-
-                    // System.out.println("EOF not reached adding more packets: " + packetsToAdd);
-                    while (packetsToAdd != 0 && ((int) eofFlag & 0xFF) == 0){
-                        packetOut = createPacket();
-                        allPacketsOut.put(seqNum, packetOut);
-                        sendPacket(packetOut);
-                        addTimer(seqNum);
-                        seqNum = (seqNum + 1 ) % MAX_SEQ_NUM;
-                        packetsToAdd --;
-                    }
-
+            //    System.out.println("SeqNum = " + seqNum + " is in window: " + isInWindow(seqNum));
+                while (isInWindow(seqNum) && ((int) eofFlag & 0xFF) == 0){
+                    packetOut = createPacket();
+                    allPacketsOut.put(seqNum, packetOut);
+                    sendPacket(packetOut);
+                    addTimer(seqNum);
+        //            System.out.println("Sending packet: " + seqNum);
+                    seqNum = (seqNum + 1 ) % MAX_SEQ_NUM;
                 }
-// check why i need this
-//                if ( ((int) eofFlag & 0xFF) != 0 && fullReads % MAX_SEQ_NUM != baseNum)
-//                    break;
             }
         }
+//        System.out.println("OUTSIDE WHILE");
     }
 
     private void analysis() {
@@ -219,7 +213,8 @@ public class Sender2b extends Thread {
             System.out.println("ERROR: FILE STREAM CANNOT CLOSE");
             System.exit(0);
         }
-        socketIn.close();
+        socketIn.close();           System.out.println("");
+
         socketOut.close();
     }
 
@@ -277,17 +272,32 @@ public class Sender2b extends Thread {
     }
 
     private void resendTimeoutPackets(){
-        for (Integer i : allPacketsOutTimers.keySet()){
+        // for (Integer i : allPacketsOutTimers.keySet()){
+        //     MyTimer timer = allPacketsOutTimers.get(i);
+        //     if (timer.isTimeout()){
+        //     //    System.out.println("Packet timer timeout: " + i);
+        //         try {
+        //             socketOut.send(allPacketsOut.get(i));
+        //             timer.start();
+        //         } catch (IOException e){
+        //             System.out.println("ERROR IN SOCKET SENDING (resend timeout packets)");
+        //         }
+        //     }
+        // }
+        for (int i = baseNum; isInWindow(i);){
             MyTimer timer = allPacketsOutTimers.get(i);
-            if (timer.isTimeout()){
-                System.out.println("Packet timer timeout: " + i);
-                try {
-                    socketOut.send(allPacketsOut.get(i));
-                    timer.start();
-                } catch (IOException e){
-                    System.out.println("ERROR IN SOCKET SENDING (resend packet)");
+            if (timer!=null)
+                if (timer.isTimeout()){
+                //    System.out.println("Packet timer timeout: " + i);
+                    try {
+                        socketOut.send(allPacketsOut.get(i));
+                        timer.start();
+                    } catch (IOException e){
+                        System.out.println("ERROR IN SOCKET SENDING (resend timeout packets)");
+                    }
+                    break;
                 }
-            }
+            i = (i + 1) % MAX_SEQ_NUM;
         }
     }
 
@@ -328,6 +338,12 @@ public class Sender2b extends Thread {
         return value;
     }
 
+
+    private boolean isInWindow(int number){
+        if (baseNum <= number)
+            return (number - baseNum) < windowSize;
+        else return (MAX_SEQ_NUM - baseNum + number) < windowSize;
+    }
     // Own timer class
     // ------------------------------------------------------------------
     private class MyTimer {

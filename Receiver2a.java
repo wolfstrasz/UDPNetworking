@@ -80,21 +80,22 @@ public class Receiver2a extends Thread {
     }
 
     public void run() {
+        nextSeqNum = 1;
         packetIn = new DatagramPacket(packetInData, packetInData.length);
-        //System.out.println("Server Running");
+        // System.out.println("Server Running");
         while (((int) eofFlag) == 0) {
 
             receivePacket();
             extractData();
-            //System.out.println("Received packet: " + seqNum);
+            // System.out.println("Received packet: " + seqNum);
             if (seqNum == nextSeqNum) {
-                //System.out.println("Writing and sending ACK");
+                // System.out.println("Writing and sending ACK");
                 writeData();
                 packetOut = createACKPacket();
                 sendPacket(packetOut);
                 nextSeqNum = (nextSeqNum + 1) % MAX_SEQ_NUM;
-            } else {
-                //System.out.println("Sending old ACK packet");
+            } else if (packetOut != null){
+                // System.out.println("Sending old ACK packet");
                 sendPacket(packetOut);
             }
         }
