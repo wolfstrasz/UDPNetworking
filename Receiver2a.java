@@ -13,6 +13,7 @@ public class Receiver2a extends Thread {
     private static final int DATA_SIZE = 1024;
     private static final int HEADER_SIZE = 5;
     private static final int MAX_SEQ_NUM = 65535;
+    private static final int TIMES_RESEND = 50;
 
     /* connection vars */
     private DatagramSocket socketIn;
@@ -22,7 +23,7 @@ public class Receiver2a extends Thread {
 
     /* File vars */
     private FileOutputStream fout = null;
-
+    private boolean[] writtenPackets = new boolean[900];
     /* Data vars */
     private byte[] packetInData = new byte[DATA_SIZE + HEADER_SIZE];
     private byte[] dataToWrite;
@@ -31,7 +32,7 @@ public class Receiver2a extends Thread {
     private int nextSeqNum;
     private int seqNum;
     private byte eofFlag;
-
+    private int lastAckNum;
     // Main functionality methods
     // ------------------------------------------------------------------
     private void setup(String[] args) {
@@ -82,24 +83,32 @@ public class Receiver2a extends Thread {
     public void run() {
         nextSeqNum = 1;
         packetIn = new DatagramPacket(packetInData, packetInData.length);
-        // System.out.println("Server Running");
+    //     System.out.println("Server Running");
         while (((int) eofFlag) == 0) {
 
             receivePacket();
             extractData();
-            // System.out.println("Received packet: " + seqNum);
+//            System.out.println("Received packet: " + seqNum);
             if (seqNum == nextSeqNum) {
-                // System.out.println("Writing and sending ACK");
+    //             System.out.println("Writing and sending ACK: " + seqNum);
                 writeData();
                 packetOut = createACKPacket();
                 sendPacket(packetOut);
                 nextSeqNum = (nextSeqNum + 1) % MAX_SEQ_NUM;
             } else if (packetOut != null){
-                // System.out.println("Sending old ACK packet");
+                eofFlag = (byte) 0;
+    //             System.out.println("Sending old ACK packet: " + lastAckNum);
                 sendPacket(packetOut);
             }
         }
 
+        // System.out.println("Packets not written:");
+        // for (int i =0; i < 900; i++)
+        //     if(!writtenPackets[i])
+        //         System.out.println(": " + i);
+        for (int i = 0; i < TIMES_RESEND; i++){
+            sendPacket(packetOut);
+        }
     }
 
     private void close() {
@@ -140,6 +149,7 @@ public class Receiver2a extends Thread {
     }
 
     private void writeData() {
+        writtenPackets[seqNum] = true;
         try {
             fout.write(dataToWrite);
         } catch (IOException e) {
@@ -156,6 +166,8 @@ public class Receiver2a extends Thread {
         bb.put(intToByteArray(seqNum)); /// Sequence Number
         byte[] combined = bb.array();
 
+
+        lastAckNum = seqNum;
         // create packet
         return new DatagramPacket(combined, combined.length, address, port + 1);
         //System.out.println("Sending ACK packet size == " + packetOut.getLength());

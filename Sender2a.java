@@ -145,7 +145,9 @@ public class Sender2a extends Thread {
             packetOut = createPacket();
             allPacketsOut.put(seqNum, packetOut);
             sendPacket(packetOut);
-            seqNum ++;
+//            System.out.println("Sending packet: " + seqNum);
+
+            seqNum = ( seqNum + 1 ) % MAX_SEQ_NUM;
         }
 
         while (! (((int) eofFlag & 0xFF) != 0 && allPacketsOut.size() == 0)) {
@@ -158,9 +160,9 @@ public class Sender2a extends Thread {
                 if(timer.isTimeout()) {
                     resendPackets();
                     timer.start();
-                    num_resends++;
-                    if (num_resends > 10) transmissionEnd = System.currentTimeMillis();
-                    if (num_resends > 50) break;
+                //    num_resends++;
+                //    if (num_resends > 10) transmissionEnd = System.currentTimeMillis();
+                //    if (num_resends > 10 && allPacketsOut.size() <= windowSize - 1) break;
                 }
             } catch (IOException e) {
                 System.out.println("ERROR: IO Exception at SocketIn receive packet");
@@ -172,7 +174,7 @@ public class Sender2a extends Thread {
             // ------------------------------------------------------------------
 
             while (getACK() >= baseNum){
-                // System.out.println("Received ACK: " + getACK());
+        //         System.out.println("Received ACK: " + getACK());
                 if(allPacketsOut.containsKey(baseNum))      // removes duplicates
                     allPacketsOut.remove(baseNum);
 
@@ -184,7 +186,7 @@ public class Sender2a extends Thread {
 
                     seqNum = (seqNum + 1) % MAX_SEQ_NUM;
                     sendPacket(packetOut);
-                    // System.out.println("Sending packet: " + seqNum);
+                //     System.out.println("Sending packet: " + seqNum);
                 }
             }
         }
@@ -272,16 +274,16 @@ public class Sender2a extends Thread {
     }
 
     private void resendPackets() {
-        // System.out.println("resendPackets:");
+    //    System.out.println("resendPackets:");
         for (int i = baseNum; i < baseNum + allPacketsOut.size() ; i++){
-        //    System.out.print(i + ",");
+    //        System.out.print(i + ",");
             try {
                 socketOut.send(allPacketsOut.get(i));
             } catch (IOException e) {
-                System.out.println("ERROR IN SOCKET SENDING");
+               System.out.println("ERROR IN SOCKET SENDING");
             }
         }
-        // System.out.println("");
+//        System.out.println("");
     }
 
     // UTILITIES

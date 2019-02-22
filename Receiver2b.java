@@ -138,6 +138,29 @@ public class Receiver2b extends Thread {
             if (((int) eofFlag & 0xFF) != 0) gotLastPacket =  true;
         }
 
+
+        try {
+            socketIn.setSoTimeout(100);
+        } catch (SocketException e) {
+            System.out.println("SOCKET EXCEPTION");
+            System.exit(0);
+
+        }
+
+        while (true){
+            try {
+                socketIn.receive(packetIn);
+            } catch (SocketTimeoutException e) {
+                break;
+            } catch (IOException e) {
+                System.out.println("ERROR: IO Exception at SocketIn receive packet");
+                System.exit(0);
+            }
+            extractData();
+            packetOut = createACKPacket();
+            sendPacket(packetOut);
+        }
+
     }
 
     private void close() {

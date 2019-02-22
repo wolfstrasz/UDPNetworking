@@ -148,8 +148,8 @@ public class Sender2b extends Thread {
             allPacketsOut.put(seqNum, packetOut);
             sendPacket(packetOut);
             addTimer(seqNum);
-    //        System.out.println("Sending packet: " + seqNum);
-            seqNum ++;
+//            System.out.println("Sending packet: " + seqNum);
+            seqNum = ( seqNum + 1 ) % MAX_SEQ_NUM;
         }
 
         while ( (((int) eofFlag & 0xFF) == 0 ) || allPacketsOut.size() != 0) {
@@ -171,25 +171,25 @@ public class Sender2b extends Thread {
             // when we acknowledge packets move window and add packets
             // ------------------------------------------------------------------
             if (allPacketsOut.containsKey(ackN)){
-    //            System.out.println("Acknowledge packet: " + ackN);
+        //        System.out.println("Acknowledge packet: " + ackN);
                 allPacketsOut.remove(ackN);
                 allPacketsOutTimers.remove(ackN);
         //        System.out.println("EOF: " + eofFlag + " || packetsOut size = " + allPacketsOut.size());
 
+                if (allPacketsOut.size() == 0 ) baseNum = (baseNum + windowSize )% MAX_SEQ_NUM;
                 while (!(allPacketsOut.size() == 0) && allPacketsOut.get(baseNum) == null)
                     baseNum = ( baseNum + 1 ) % MAX_SEQ_NUM;
-                if (allPacketsOut.size() == 0 ) baseNum = (baseNum + windowSize )% MAX_SEQ_NUM;
 
-        //        System.out.println("Window = " + baseNum + " : " + ((baseNum + windowSize) % MAX_SEQ_NUM));
+    //            System.out.println("Window = " + baseNum + " : " + ((baseNum + windowSize) % MAX_SEQ_NUM));
                 // we should add more packets if we have not reached the end
                 // ------------------------------------------------------------------
-            //    System.out.println("SeqNum = " + seqNum + " is in window: " + isInWindow(seqNum));
+    //            System.out.println("SeqNum = " + seqNum + " is in window: " + isInWindow(seqNum));
                 while (isInWindow(seqNum) && ((int) eofFlag & 0xFF) == 0){
                     packetOut = createPacket();
                     allPacketsOut.put(seqNum, packetOut);
                     sendPacket(packetOut);
                     addTimer(seqNum);
-        //            System.out.println("Sending packet: " + seqNum);
+//                    System.out.println("Sending packet: " + seqNum);
                     seqNum = (seqNum + 1 ) % MAX_SEQ_NUM;
                 }
             }
@@ -213,8 +213,7 @@ public class Sender2b extends Thread {
             System.out.println("ERROR: FILE STREAM CANNOT CLOSE");
             System.exit(0);
         }
-        socketIn.close();           System.out.println("");
-
+        socketIn.close();
         socketOut.close();
     }
 
