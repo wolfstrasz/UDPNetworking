@@ -168,6 +168,8 @@ public class Sender2b extends Thread {
             }
 
             int ackN = getAck();
+            boolean stopSender = getStopSignal();
+            if (stopSender)break;
             // when we acknowledge packets move window and add packets
             // ------------------------------------------------------------------
             if (allPacketsOut.containsKey(ackN)){
@@ -319,6 +321,10 @@ public class Sender2b extends Thread {
     private int getAck() {
         //System.out.println("Receiving packet size == " + ackData.length);
         return byteArrayToInt(Arrays.copyOfRange(ackData, 2, 4));
+    }
+
+    private boolean getStopSignal() {
+        return (ackData[0] == 1 && ackData[1] == 1);
     }
 
     private static byte[] intToByteArray(int value) {

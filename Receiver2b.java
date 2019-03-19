@@ -138,26 +138,8 @@ public class Receiver2b extends Thread {
             if (((int) eofFlag & 0xFF) != 0) gotLastPacket =  true;
         }
 
-
-        try {
-            socketIn.setSoTimeout(100);
-        } catch (SocketException e) {
-            System.out.println("SOCKET EXCEPTION");
-            System.exit(0);
-
-        }
-
-        while (true){
-            try {
-                socketIn.receive(packetIn);
-            } catch (SocketTimeoutException e) {
-                break;
-            } catch (IOException e) {
-                System.out.println("ERROR: IO Exception at SocketIn receive packet");
-                System.exit(0);
-            }
-            extractData();
-            packetOut = createACKPacket();
+        packetOut = createSTOPPacket();
+        for (int i = 0; i < 100; i ++){
             sendPacket(packetOut);
         }
 
@@ -230,6 +212,17 @@ public class Receiver2b extends Thread {
         ByteBuffer bb = ByteBuffer.allocate(HEADER_SIZE - 1);
         bb.put((byte) 0); /// Offset
         bb.put((byte) 0); /// Octet
+        bb.put(intToByteArray(seqNum)); /// Sequence Number
+        byte[] combined = bb.array();
+
+        // create packet
+        return new DatagramPacket(combined, combined.length, address, port + 1);
+    }
+
+    private DatagramPacket createSTOPPacket(){
+        ByteBuffer bb = ByteBuffer.allocate(HEADER_SIZE - 1);
+        bb.put((byte) 1); /// Offset
+        bb.put((byte) 1); /// Octet
         bb.put(intToByteArray(seqNum)); /// Sequence Number
         byte[] combined = bb.array();
 
