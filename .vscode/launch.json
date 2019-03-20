@@ -2,6 +2,12 @@
     "configurations": [
         {
             "type": "java",
+            "name": "CodeLens (Launch) - Sender2a",
+            "request": "launch",
+            "mainClass": "Sender2a"
+        },
+        {
+            "type": "java",
             "name": "CodeLens (Launch) - Sender1a",
             "request": "launch",
             "mainClass": "Sender1a"

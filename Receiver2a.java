@@ -1,3 +1,4 @@
+
 /* Forename Surname MatriculationNumber */
 /* Boyan Yotov s1509922*/
 
@@ -13,7 +14,7 @@ public class Receiver2a extends Thread {
     private static final int DATA_SIZE = 1024;
     private static final int HEADER_SIZE = 5;
     private static final int MAX_SEQ_NUM = 65535;
-    private static final int TIMES_RESEND = 50;
+    private static final int TIMES_RESEND_LAST_ACK = 50;
 
     /* connection vars */
     private DatagramSocket socketIn;
@@ -33,7 +34,11 @@ public class Receiver2a extends Thread {
     private int seqNum;
     private byte eofFlag;
     private int lastAckNum;
+
     // Main functionality methods
+    // ------------------------------------------------------------------
+
+    // Setup server from data
     // ------------------------------------------------------------------
     private void setup(String[] args) {
         /* args: <RemoteHost> <Port> <Filename> */
@@ -80,37 +85,43 @@ public class Receiver2a extends Thread {
         }
     }
 
+    // Main server functionality
+    // ------------------------------------------------------------------
     public void run() {
         nextSeqNum = 1;
         packetIn = new DatagramPacket(packetInData, packetInData.length);
-    //     System.out.println("Server Running");
+        // System.out.println("Server Running");
         while (((int) eofFlag) == 0) {
 
             receivePacket();
             extractData();
-//            System.out.println("Received packet: " + seqNum);
+            // System.out.println("Received packet: " + seqNum);
+            // if packet is received for the first time -> write it
             if (seqNum == nextSeqNum) {
-    //             System.out.println("Writing and sending ACK: " + seqNum);
+                // System.out.println("Writing and sending ACK: " + seqNum);
                 writeData();
                 packetOut = createACKPacket();
                 sendPacket(packetOut);
                 nextSeqNum = (nextSeqNum + 1) % MAX_SEQ_NUM;
-            } else if (packetOut != null){
+
+                // the if here is required as until we run the Sender
+                // the received packet is NULL
+            } else if (packetOut != null) {
+                // reset EOFFLAG in case we received last packet (one with EOF set)
+                // out of order and we need to skip it
                 eofFlag = (byte) 0;
-    //             System.out.println("Sending old ACK packet: " + lastAckNum);
+                // System.out.println("Sending old ACK packet: " + lastAckNum);
                 sendPacket(packetOut);
             }
         }
 
-        // System.out.println("Packets not written:");
-        // for (int i =0; i < 900; i++)
-        //     if(!writtenPackets[i])
-        //         System.out.println(": " + i);
-        for (int i = 0; i < TIMES_RESEND; i++){
+        for (int i = 0; i < TIMES_RESEND_LAST_ACK; i++) {
             sendPacket(packetOut);
         }
     }
 
+    // close sockets and file output stream
+    // ------------------------------------------------------------------
     private void close() {
         try {
             fout.close();
@@ -121,13 +132,14 @@ public class Receiver2a extends Thread {
         socketOut.close();
     }
 
+    // generic setup server, run, close
+    // ------------------------------------------------------------------
     public static void main(String[] args) {
         Receiver2a receiver = new Receiver2a();
         receiver.setup(args);
         receiver.run();
         receiver.close();
     }
-
 
     // packet receiving methods
     // ------------------------------------------------------------------
@@ -145,7 +157,7 @@ public class Receiver2a extends Thread {
         eofFlag = packetInData[4];
         dataToWrite = new byte[packetIn.getLength() - HEADER_SIZE];
         dataToWrite = Arrays.copyOfRange(packetInData, HEADER_SIZE, packetIn.getLength());
-        //System.out.println("Receiving packet size == " + dataToWrite.length);
+        // System.out.println("Receiving packet size == " + dataToWrite.length);
     }
 
     private void writeData() {
@@ -166,11 +178,10 @@ public class Receiver2a extends Thread {
         bb.put(intToByteArray(seqNum)); /// Sequence Number
         byte[] combined = bb.array();
 
-
         lastAckNum = seqNum;
         // create packet
         return new DatagramPacket(combined, combined.length, address, port + 1);
-        //System.out.println("Sending ACK packet size == " + packetOut.getLength());
+        // System.out.println("Sending ACK packet size == " + packetOut.getLength());
     }
 
     private void sendPacket(DatagramPacket packet) {
@@ -185,10 +196,10 @@ public class Receiver2a extends Thread {
     // UTILITIES
     // ------------------------------------------------------------------
     private static byte[] intToByteArray(int value) {
-        return new byte[]{
+        return new byte[] {
                 // (byte)(value >>> 24),
                 // (byte)(value >>> 16),
-                (byte) (value >>> 8), (byte) value};
+                (byte) (value >>> 8), (byte) value };
     }
 
     private static int byteArrayToInt(byte[] bytes) {

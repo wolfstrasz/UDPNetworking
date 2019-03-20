@@ -1,6 +1,6 @@
+
 /* Forename Surname MatriculationNumber */
 /* Boyan Yotov s1509922*/
-import javax.xml.crypto.Data;
 import java.net.DatagramSocket;
 import java.util.Arrays;
 import java.net.DatagramPacket;
@@ -24,7 +24,7 @@ public class Receiver2b extends Thread {
     private FileOutputStream fout = null;
 
     /* Data vars */
-    private Map<Integer, byte[]> bufferedData = new HashMap<Integer,byte[]>();
+    private Map<Integer, byte[]> bufferedData = new HashMap<Integer, byte[]>();
     private DatagramPacket packetOut;
     private DatagramPacket packetIn;
     private byte[] packetData = new byte[DATA_SIZE + HEADER_SIZE];
@@ -35,10 +35,10 @@ public class Receiver2b extends Thread {
     private int seqNum;
     private boolean gotLastPacket = false;
 
-    // Main functionality methods
+    // pre-run setup
     // ------------------------------------------------------------------
     private void setup(String[] args) {
-        /* args: <RemoteHost> <Port> <Filename> <WindowSize>*/
+        /* args: <RemoteHost> <Port> <Filename> <WindowSize> */
 
         // get localhost IP
         // ------------------------------------------------------------------
@@ -51,7 +51,7 @@ public class Receiver2b extends Thread {
 
         // parse window size
         // ------------------------------------------------------------------
-        try  {
+        try {
             windowSize = Integer.parseInt(args[2]);
         } catch (NumberFormatException e) {
             System.out.println("ERROR: Window size is not an Integer");
@@ -92,59 +92,61 @@ public class Receiver2b extends Thread {
 
     }
 
+    // main server functionality
+    // ------------------------------------------------------------------
     public void run() {
         seqNum = 1;
         baseNum = 1;
         MAX_SEQ_NUM = windowSize * 2;
         packetIn = new DatagramPacket(packetData, packetData.length);
 
-//        System.out.println("Running with MSN: " + MAX_SEQ_NUM);
+        // work until we have received at some point the last packet and
+        // all of our buffered data is writen in the file
+        // ------------------------------------------------------------------
         while (!(gotLastPacket && bufferedData.keySet().size() == 0)) {
-//            System.out.println("Waiting to receivePacket... ");
-//            System.out.println("Window = " + baseNum + " : " + ((baseNum + windowSize) % MAX_SEQ_NUM));
             receivePacket();
             extractData();
-//            System.out.println("Basenum: " + baseNum);
-//            System.out.println("Received packet: " + seqNum + " : " + eofFlag);
-            if (seqNum == baseNum){
 
-//                System.out.println("Writing data");
+            // if we receive packet in order write it, send ACK
+            // check if we can write any of the buffered data
+            if (seqNum == baseNum) {
+                // System.out.println("Writing data");
                 writeData();
-                //createACKPacket();
-                //sendPacket();
-                baseNum = (baseNum + 1 ) % MAX_SEQ_NUM; // => !isInWindow(seqNum)
+                createACKPacket();
+                sendPacket(packetOut);
+                baseNum = (baseNum + 1) % MAX_SEQ_NUM;
                 deliverBuffered();
-            }
 
-            if (isInWindow(seqNum)) {
+                // if it is inside the window but not in order
+                // then buffer it and send ACK
+            } else if (isInWindow(seqNum)) {
                 // add to buffer
-//                System.out.println("Buffering packet: " + seqNum + " (basenum = " + baseNum + " )");
                 bufferedData.put(seqNum, dataToWrite);
                 packetOut = createACKPacket();
-//                System.out.println("Sending ack packet: " + seqNum);
+                // System.out.println("Sending ack packet: " + seqNum);
                 sendPacket(packetOut);
+
+                // otherwise send ACK
             } else {
                 packetOut = createACKPacket();
                 sendPacket(packetOut);
-//                System.out.println("Sending ack packet: " + seqNum);
+                // System.out.println("Sending ack packet: " + seqNum);
             }
 
-//           System.out.println("DATA TO WRITE: " + bufferedData.keySet().size());
-//           for (Integer i: bufferedData.keySet()){
-//               System.out.print(":" + i);
-//           }
-//           System.out.println("");
-        //    System.out.println("gotLastPacket: " + gotLastPacket + " && " + "bufferedData.size: " + bufferedData.keySet().size());
-            if (((int) eofFlag & 0xFF) != 0) gotLastPacket =  true;
+            if (((int) eofFlag & 0xFF) != 0)
+                gotLastPacket = true;
         }
 
+        // after finish send stop signal 100 times
         packetOut = createSTOPPacket();
-        for (int i = 0; i < 100; i ++){
+        for (int i = 0; i < 100; i++) {
             sendPacket(packetOut);
         }
 
     }
 
+    // closes output stream and sockets
+    // ------------------------------------------------------------------
     private void close() {
         try {
             fout.close();
@@ -155,6 +157,8 @@ public class Receiver2b extends Thread {
         socketOut.close();
     }
 
+    // entry point
+    // ------------------------------------------------------------------
     public static void main(String[] args) {
         Receiver2b receiver = new Receiver2b();
         receiver.setup(args);
@@ -187,15 +191,24 @@ public class Receiver2b extends Thread {
         }
     }
 
-    private boolean isInWindow(int number){
+    // function to check whether a number is
+    // inside the window
+    // case 1 : [0, ..., basenum, ..., number, ..., window*2]
+    // case 2 : [0, ..., number, ..., basenum, ..., window*2]
+    // ------------------------------------------------------------------
+    private boolean isInWindow(int number) {
         if (baseNum <= number)
             return (number - baseNum) < windowSize;
-        else return (MAX_SEQ_NUM - baseNum + number) < windowSize;
+        else
+            return (MAX_SEQ_NUM - baseNum + number) < windowSize;
     }
 
-    private void deliverBuffered(){
-     //  System.out.println("Start to deliverBuffered");
-        while (bufferedData.containsKey(baseNum)){
+    // function that goes through all packets that are buffered
+    // and are in order to be delivered
+    // ------------------------------------------------------------------
+    private void deliverBuffered() {
+        // System.out.println("Start to deliverBuffered");
+        while (bufferedData.containsKey(baseNum)) {
             // System.out.println("Delivered: " + baseNum);
             dataToWrite = bufferedData.get(baseNum);
             writeData();
@@ -203,7 +216,7 @@ public class Receiver2b extends Thread {
 
             baseNum = (baseNum + 1) % MAX_SEQ_NUM;
         }
-    //    System.out.println("Finished deliverBuffered");
+        // System.out.println("Finished deliverBuffered");
     }
 
     // packet sending methods
@@ -219,7 +232,10 @@ public class Receiver2b extends Thread {
         return new DatagramPacket(combined, combined.length, address, port + 1);
     }
 
-    private DatagramPacket createSTOPPacket(){
+    // new time of packet that will let the client know that the server
+    // finished all its job and client must stop sending data
+    // ------------------------------------------------------------------
+    private DatagramPacket createSTOPPacket() {
         ByteBuffer bb = ByteBuffer.allocate(HEADER_SIZE - 1);
         bb.put((byte) 1); /// Offset
         bb.put((byte) 1); /// Octet
@@ -230,6 +246,8 @@ public class Receiver2b extends Thread {
         return new DatagramPacket(combined, combined.length, address, port + 1);
     }
 
+    // sends given packet
+    // ------------------------------------------------------------------
     private void sendPacket(DatagramPacket packet) {
         try {
             socketOut.send(packet);
@@ -241,10 +259,10 @@ public class Receiver2b extends Thread {
     // UTILITIES
     // ------------------------------------------------------------------
     private static byte[] intToByteArray(int value) {
-        return new byte[]{
+        return new byte[] {
                 // (byte)(value >>> 24),
                 // (byte)(value >>> 16),
-                (byte) (value >>> 8), (byte) value};
+                (byte) (value >>> 8), (byte) value };
     }
 
     private static int byteArrayToInt(byte[] bytes) {
